@@ -1,0 +1,62 @@
+// Boolean
+true;
+false;
+
+// Negation
+!true;
+!false;
+
+// And
+true and false;
+true and true;
+
+// Or
+false or false;
+true or false;
+
+// Both 'and' and 'or' support short circuiting
+
+
+// Numbers
+// Every number is stored as double precision floating point
+
+// Literals
+1234;  // An integer.
+12.34; // A decimal number.
+
+// Arithmetic
+12 + 89;
+7.254 - 24;
+18 * 3;
+89 / 2;
+
+// Negation
+-45;
+
+// Comparison
+42 < 8.2;
+67 <= 105;
+97 > 11;
+1124.234 >= 234234;
+
+// Equality
+1 == 2; // false
+1 != 2; // true
+
+
+// Strings
+"I am a string";
+"";    // The empty string.
+"123"; // This is a string, not a number.
+
+// Concatenation
+"Hello" + "World";
+
+// Equality
+"Foo" == "Foo"; // true
+"Foo" != "Bar"; // true
+
+
+// Different types can be compared, are always unequal
+"Test" == 435; // false
+true == "foo"; // false

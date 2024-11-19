@@ -1,0 +1,51 @@
+class Breakfast {
+  init(meat, bread) {
+    this.meat = meat;
+    this.bread = bread;
+  }
+  
+  cook() {
+    print "Eggs a-fryin'!";
+  }
+
+  serve(who) {
+    print "Enjoy your " + this.meat + " and " +
+        this.bread + ", " + who + ".";
+  }
+}
+
+// Store it in variables.
+var someVariable = Breakfast;
+
+// Pass it to functions.
+fun someFunction(a) {
+    return a;
+}
+someFunction(Breakfast);
+
+// Instantiate class
+var breakfast = Breakfast("bacon", "toast");
+print breakfast; // "Breakfast instance"
+
+// Assigning fields on an instance
+breakfast.meat = "sausage";
+breakfast.side = "potatoes";
+
+breakfast.serve("Dear Reader");
+// "Enjoy your sausage and toast, Dear Reader."
+
+
+// Single Inheritance
+class Brunch < Breakfast {
+  init(meat, bread, drink) {
+    super.init(meat, bread);
+    this.drink = drink;
+  }
+  
+  drink() {
+    print "How about a Bloody Mary?";
+  }
+}
+
+var benedict = Brunch("ham", "English muffin");
+benedict.serve("Noble Reader");

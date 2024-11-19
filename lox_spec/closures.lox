@@ -1,0 +1,13 @@
+fun returnFunction() {
+  var outside = "outside";
+
+  // Inner can access variable declared outside its scope
+  fun inner() {
+    print outside;
+  }
+
+  return inner;
+}
+
+var fn = returnFunction();
+fn(); // prints "outside"

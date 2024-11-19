@@ -1,0 +1,15 @@
+// Variable declaration and definition
+var imAVariable = "here is my value";
+var iAmNil;
+
+// Expected operator precedence, can be overridden with parentheses
+var avg = (78 + 12) / 2;
+
+// Existing variable can be changed
+avg = 67;
+
+// Block statement
+{
+    print "First";
+    print "Second";
+}

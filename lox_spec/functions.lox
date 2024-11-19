@@ -1,0 +1,30 @@
+fun printFoo() {
+    print "Foo";
+}
+printFoo();
+
+fun printSum(a, b) {
+  print a + b;
+}
+printSum(23, 11);
+
+fun returnSum(a, b) {
+    return a + b;
+}
+print returnSum(62, -14);
+
+// Refer to function
+fun identity(a) {
+    return a;
+}
+print identity(returnSum)(1, 2);
+
+// Nested functions
+fun outerFunction() {
+  fun localFunction() {
+    print "I'm local!";
+  }
+
+  localFunction();
+}
+outerFunction();
