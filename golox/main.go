@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"toterich/golox/scanner"
 )
 
 func check(e error) {
@@ -14,8 +15,7 @@ func check(e error) {
 }
 
 func run(data string) {
-	scanner := Scanner{source: data}
-	tokens := scanner.scanTokens()
+	tokens := scanner.ScanTokens(data)
 	fmt.Println("Tokens:", tokens)
 }
 
