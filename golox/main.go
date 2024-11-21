@@ -8,21 +8,28 @@ import (
 	"toterich/golox/scanner"
 )
 
-func check(e error) {
+// Check for error and exit
+// If exitCode is 0, only log error and don't exit
+func check(e error, exitCode int) {
 	if e != nil {
-		log.Fatal(e)
+		log.Print(e)
+		if exitCode != 0 {
+			os.Exit(exitCode)
+		}
 	}
 }
 
-func run(data string) {
+func run(data string) error {
 	tokens := scanner.ScanTokens(data)
 	fmt.Println("Tokens:", tokens)
+	return nil
 }
 
 func runFile(file string) {
 	data, err := os.ReadFile(file)
-	check(err)
-	run(string(data))
+	check(err, 1)
+	err = run(string(data))
+	check(err, 2)
 }
 
 func runPrompt() {
@@ -31,8 +38,9 @@ func runPrompt() {
 	for {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
-		check(err)
-		run(line)
+		check(err, 0)
+		err = run(line)
+		check(err, 0)
 	}
 }
 
