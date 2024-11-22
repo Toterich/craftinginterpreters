@@ -208,5 +208,13 @@ func (s *Scanner) matchIdentifier() {
 		s.current += 1
 	}
 
-	s.addToken(IDENTIFIER)
+	t := s.generateToken(IDENTIFIER)
+
+	// Check if this identifier is a keyword
+	tokenType, ok := KeywordStrings[t.lexeme]
+	if ok {
+		t.type_ = tokenType
+	}
+
+	s.tokens = append(s.tokens, t)
 }
