@@ -1,0 +1,14 @@
+// Single Line Comment
+
+/* Block Comment
+sdfdsf
+kjj
+fun foo(t) {
+    return 42;
+}
+*/
+
+/* Nested /*
+Block /*
+Comment */
+var a = 32523; */           */

@@ -83,11 +83,14 @@ func (s *Scanner) ScanTokens(source string) []Token {
 				s.addToken(GREATER)
 			}
 		case '/':
-			// Comments
 			if s.match('/') {
+				// Comments
 				for (s.peek() != '\n') && (!s.isAtEnd()) {
 					s.current += 1
 				}
+			} else if s.match('*') {
+				// Block Comments
+				s.matchBlockComment()
 			} else {
 				s.addToken(SLASH)
 			}
@@ -217,4 +220,23 @@ func (s *Scanner) matchIdentifier() {
 	}
 
 	s.tokens = append(s.tokens, t)
+}
+
+func (s *Scanner) matchBlockComment() {
+	nestingLevel := 1
+
+	for nestingLevel > 0 {
+		if s.peek() == '*' && s.peekNext() == '/' {
+			nestingLevel -= 1
+			s.current += 2
+		} else if s.peek() == '/' && s.peekNext() == '*' {
+			nestingLevel += 1
+			s.current += 2
+		} else if s.peek() == '\n' {
+			s.line += 1
+			s.current += 1
+		} else {
+			s.current += 1
+		}
+	}
 }
