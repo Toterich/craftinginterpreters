@@ -1,6 +1,21 @@
 package parser
 
-import "toterich/golox/error"
+import (
+	"strconv"
+	"toterich/golox/error"
+)
+
+func isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
+func isAlpha(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z' || c == '_')
+}
+
+func isAlphaNumeric(c byte) bool {
+	return isDigit(c) || isAlpha(c)
+}
 
 type Scanner struct {
 	start   int
@@ -13,7 +28,7 @@ type Scanner struct {
 func (s *Scanner) ScanTokens(source string) []Token {
 	s.start = 0
 	s.current = 0
-	s.line = 0
+	s.line = 1
 	s.source = source
 	s.tokens = make([]Token, 0)
 
@@ -79,7 +94,7 @@ func (s *Scanner) ScanTokens(source string) []Token {
 		case '\n':
 			s.line += 1
 		case '"':
-			s.stringLiteral()
+			s.matchString()
 
 		// Ignore whitespace
 		case ' ':
@@ -87,7 +102,13 @@ func (s *Scanner) ScanTokens(source string) []Token {
 		case '\t':
 
 		default:
-			error.LogError(s.line, "Unexpected character.")
+			if isDigit(c) {
+				s.matchNumber()
+			} else if isAlpha(c) {
+				s.matchIdentifier()
+			} else {
+				error.LogError(s.line, "Unexpected character.")
+			}
 		}
 	}
 
@@ -99,8 +120,12 @@ func (s Scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
 }
 
+func (s Scanner) generateToken(type_ TokenType) Token {
+	return Token{type_: type_, lexeme: s.source[s.start:s.current], line: s.line}
+}
+
 func (s *Scanner) addToken(type_ TokenType) {
-	s.tokens = append(s.tokens, Token{type_: type_, lexeme: s.source[s.start:s.current], line: s.line})
+	s.tokens = append(s.tokens, s.generateToken(type_))
 }
 
 func (s *Scanner) match(expected byte) bool {
@@ -122,7 +147,14 @@ func (s Scanner) peek() byte {
 	return s.source[s.current]
 }
 
-func (s *Scanner) stringLiteral() {
+func (s Scanner) peekNext() byte {
+	if s.current+1 >= len(s.source) {
+		return '\x00'
+	}
+	return s.source[s.current+1]
+}
+
+func (s *Scanner) matchString() {
 	for (s.peek() != '"') && (!s.isAtEnd()) {
 		if s.peek() == '\n' {
 			s.line += 1
@@ -138,6 +170,43 @@ func (s *Scanner) stringLiteral() {
 	// Consume closing '"'
 	s.current += 1
 
-	// Store String without wrapping ""
-	s.tokens = append(s.tokens, Token{type_: STRING, lexeme: s.source[s.start+1 : s.current-1], line: s.line})
+	t := s.generateToken(STRING)
+	// Store normalized String with Token
+	t.literal = StringLiteral(s.source[s.start+1 : s.current-1])
+	s.tokens = append(s.tokens, t)
+}
+
+func (s *Scanner) matchNumber() {
+	for isDigit(s.peek()) {
+		s.current += 1
+	}
+
+	if s.peek() == '.' && isDigit(s.peekNext()) {
+		// Consume '.'
+		s.current += 1
+
+		// Consume all fractional digits
+		for isDigit(s.peek()) {
+			s.current += 1
+		}
+	}
+
+	t := s.generateToken(NUMBER)
+
+	// Store actual numberic value with Token
+	num, err := strconv.ParseFloat(t.lexeme, 64)
+	// If this triggers, the number parsing above has a bug
+	error.AssertNoError(err)
+
+	t.literal = NumberLiteral(num)
+
+	s.tokens = append(s.tokens, t)
+}
+
+func (s *Scanner) matchIdentifier() {
+	for isAlphaNumeric(s.peek()) {
+		s.current += 1
+	}
+
+	s.addToken(IDENTIFIER)
 }

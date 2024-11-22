@@ -68,6 +68,14 @@ type LiteralValue struct {
 	numberValue float64
 }
 
+func StringLiteral(str string) LiteralValue {
+	return LiteralValue{tag: LT_STRING, stringValue: str}
+}
+
+func NumberLiteral(num float64) LiteralValue {
+	return LiteralValue{tag: LT_NUMBER, numberValue: num}
+}
+
 type Token struct {
 	type_   TokenType
 	lexeme  string
