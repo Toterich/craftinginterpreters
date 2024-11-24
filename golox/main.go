@@ -22,11 +22,12 @@ func check(e error, exitCode int) {
 func run(data string) error {
 	scanner := parser.Scanner{}
 	tokens := scanner.ScanTokens(data)
+	fmt.Println(tokens)
 
 	parser := parser.Parser{}
 	expr := parser.Parse(tokens)
-
 	fmt.Print(expr.PrettyPrint())
+
 	return nil
 }
 
