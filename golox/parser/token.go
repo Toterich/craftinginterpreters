@@ -102,6 +102,6 @@ type Token struct {
 	line    int
 }
 
-func (t Token) ToString() string {
-	return fmt.Sprintf("%d %s", t.type_, t.lexeme)
+func (t Token) String() string {
+	return fmt.Sprintf("%d %s %d", t.type_, t.lexeme, t.line)
 }

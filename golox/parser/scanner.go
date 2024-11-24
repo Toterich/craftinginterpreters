@@ -2,7 +2,7 @@ package parser
 
 import (
 	"strconv"
-	"toterich/golox/error"
+	"toterich/golox/util"
 )
 
 func isDigit(c byte) bool {
@@ -110,7 +110,7 @@ func (s *Scanner) ScanTokens(source string) []Token {
 			} else if isAlpha(c) {
 				s.matchIdentifier()
 			} else {
-				error.LogError(s.line, "Unexpected character.")
+				util.LogError(s.line, "Unexpected character.")
 			}
 		}
 	}
@@ -166,7 +166,7 @@ func (s *Scanner) matchString() {
 	}
 
 	if s.isAtEnd() {
-		error.LogError(s.line, "Unterminated string.")
+		util.LogError(s.line, "Unterminated string.")
 		return
 	}
 
@@ -199,7 +199,7 @@ func (s *Scanner) matchNumber() {
 	// Store actual numberic value with Token
 	num, err := strconv.ParseFloat(t.lexeme, 64)
 	// If this triggers, the number parsing above has a bug
-	error.AssertNoError(err)
+	util.AssertNoError(err)
 
 	t.literal = NumberLiteral(num)
 

@@ -1,4 +1,4 @@
-package error
+package util
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 func Assert(condition bool, message string) {
-	if condition {
+	if !condition {
 		panic(message)
 	}
 }

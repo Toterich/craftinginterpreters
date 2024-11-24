@@ -22,7 +22,11 @@ func check(e error, exitCode int) {
 func run(data string) error {
 	scanner := parser.Scanner{}
 	tokens := scanner.ScanTokens(data)
-	fmt.Printf("Tokens: %v \n", tokens)
+
+	parser := parser.Parser{}
+	expr := parser.Parse(tokens)
+
+	fmt.Printf("%+v", expr)
 	return nil
 }
 
