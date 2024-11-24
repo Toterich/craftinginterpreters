@@ -48,22 +48,43 @@ func (p *Parser) Parse(input []Token) Expr {
 /*
 Expression grammar rules:
 
-expression     → equality ;
-equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term           → factor ( ( "-" | "+" ) factor )* ;
-factor         → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" ) unary
+expression     -> comma_op
+comma_op       -> equality ("," equality)* ;
+equality       -> comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           -> factor ( ( "-" | "+" ) factor )* ;
+factor         -> unary ( ( "/" | "*" ) unary )* ;
+unary          -> ( "!" | "-" ) unary
                | primary ;
-primary        → NUMBER | STRING | "true" | "false" | "nil"
+primary        -> NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")" ;
 
 Every rule is implemented as a single parser function below
 */
 
-// expression     → equality ;
+// expression     -> comma_op
 func (p *Parser) parseExpression() (Expr, parserError) {
-	return p.parseEquality()
+	return p.parseCommaOp()
+}
+
+// comma_op       -> equality ("," equality)* ;
+func (p *Parser) parseCommaOp() (Expr, parserError) {
+	expr, err := p.parseEquality()
+	if err != nil {
+		return Expr{}, err
+	}
+
+	for p.match(COMMA) {
+		operator := p.previous()
+
+		right, err := p.parseEquality()
+		if err != nil {
+			return expr, err
+		}
+		expr = NewBinaryExpr(expr, operator, right)
+	}
+
+	return expr, nil
 }
 
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;

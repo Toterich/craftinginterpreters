@@ -33,6 +33,7 @@ func NewBinaryExpr(left Expr, operand Token, right Expr) Expr {
 	return Expr{tag: EXPR_BINARY, token: operand, children: []Expr{left, right}}
 }
 
+// Created by wrapping expression in ()
 func NewGroupingExpr(expr Expr) Expr {
 	return Expr{tag: EXPR_GROUPING, children: []Expr{expr}}
 }
