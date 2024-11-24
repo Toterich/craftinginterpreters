@@ -26,7 +26,7 @@ func run(data string) error {
 	parser := parser.Parser{}
 	expr := parser.Parse(tokens)
 
-	fmt.Printf("%+v", expr)
+	fmt.Print(expr.PrettyPrint())
 	return nil
 }
 
