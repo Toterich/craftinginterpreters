@@ -175,7 +175,7 @@ func (s *Scanner) matchString() {
 
 	t := s.generateToken(STRING)
 	// Store normalized String with Token
-	t.literal = StringLiteral(s.source[s.start+1 : s.current-1])
+	t.literal = NewStringLiteral(s.source[s.start+1 : s.current-1])
 	s.tokens = append(s.tokens, t)
 }
 
@@ -201,7 +201,7 @@ func (s *Scanner) matchNumber() {
 	// If this triggers, the number parsing above has a bug
 	util.AssertNoError(err)
 
-	t.literal = NumberLiteral(num)
+	t.literal = NewNumberLiteral(num)
 
 	s.tokens = append(s.tokens, t)
 }
@@ -217,6 +217,11 @@ func (s *Scanner) matchIdentifier() {
 	tokenType, ok := KeywordStrings[t.lexeme]
 	if ok {
 		t.type_ = tokenType
+		if tokenType == TRUE {
+			t.literal = NewBoolLiteral(true)
+		} else if tokenType == FALSE {
+			t.literal = NewBoolLiteral(false)
+		}
 	}
 
 	s.tokens = append(s.tokens, t)

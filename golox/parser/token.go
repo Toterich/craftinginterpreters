@@ -73,26 +73,30 @@ var KeywordStrings = map[string]TokenType{
 	"while":  WHILE,
 }
 
-type LiteralType int
+type LoxType int
 
 const (
-	LT_NIL LiteralType = iota
+	LT_NIL LoxType = iota
 	LT_STRING
 	LT_NUMBER
+	LT_BOOL
 )
 
 type LiteralValue struct {
-	tag         LiteralType
-	stringValue string
-	numberValue float64
+	type_ LoxType
+	value any
 }
 
-func StringLiteral(str string) LiteralValue {
-	return LiteralValue{tag: LT_STRING, stringValue: str}
+func NewStringLiteral(str string) LiteralValue {
+	return LiteralValue{type_: LT_STRING, value: str}
 }
 
-func NumberLiteral(num float64) LiteralValue {
-	return LiteralValue{tag: LT_NUMBER, numberValue: num}
+func NewNumberLiteral(num float64) LiteralValue {
+	return LiteralValue{type_: LT_NUMBER, value: num}
+}
+
+func NewBoolLiteral(val bool) LiteralValue {
+	return LiteralValue{type_: LT_BOOL, value: val}
 }
 
 type Token struct {
