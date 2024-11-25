@@ -73,36 +73,10 @@ var KeywordStrings = map[string]TokenType{
 	"while":  WHILE,
 }
 
-type LoxType int
-
-const (
-	LT_NIL LoxType = iota
-	LT_STRING
-	LT_NUMBER
-	LT_BOOL
-)
-
-type LiteralValue struct {
-	Type  LoxType
-	Value any
-}
-
-func NewStringLiteral(str string) LiteralValue {
-	return LiteralValue{Type: LT_STRING, Value: str}
-}
-
-func NewNumberLiteral(num float64) LiteralValue {
-	return LiteralValue{Type: LT_NUMBER, Value: num}
-}
-
-func NewBoolLiteral(val bool) LiteralValue {
-	return LiteralValue{Type: LT_BOOL, Value: val}
-}
-
 type Token struct {
 	Type    TokenType
 	Lexeme  string
-	Literal LiteralValue
+	Literal LoxValue
 	Line    int
 }
 

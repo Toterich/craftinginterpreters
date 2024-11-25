@@ -176,7 +176,7 @@ func (s *Scanner) matchString() {
 
 	t := s.generateToken(ast.STRING)
 	// Store normalized String with ast.Token
-	t.Literal = ast.NewStringLiteral(s.source[s.start+1 : s.current-1])
+	t.Literal = ast.NewStringValue(s.source[s.start+1 : s.current-1])
 	s.tokens = append(s.tokens, t)
 }
 
@@ -202,7 +202,7 @@ func (s *Scanner) matchNumber() {
 	// If this triggers, the number parsing above has a bug
 	util.AssertNoError(err)
 
-	t.Literal = ast.NewNumberLiteral(num)
+	t.Literal = ast.NewNumberValue(num)
 
 	s.tokens = append(s.tokens, t)
 }
@@ -219,9 +219,9 @@ func (s *Scanner) matchIdentifier() {
 	if ok {
 		t.Type = tokenType
 		if tokenType == ast.TRUE {
-			t.Literal = ast.NewBoolLiteral(true)
+			t.Literal = ast.NewBoolValue(true)
 		} else if tokenType == ast.FALSE {
-			t.Literal = ast.NewBoolLiteral(false)
+			t.Literal = ast.NewBoolValue(false)
 		}
 	}
 
