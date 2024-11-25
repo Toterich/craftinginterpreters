@@ -2,6 +2,7 @@ package parser
 
 import (
 	"strconv"
+	"toterich/golox/ast"
 	"toterich/golox/util"
 )
 
@@ -22,15 +23,15 @@ type Scanner struct {
 	current int
 	line    int
 	source  string
-	tokens  []Token
+	tokens  []ast.Token
 }
 
-func (s *Scanner) ScanTokens(source string) []Token {
+func (s *Scanner) ScanTokens(source string) []ast.Token {
 	s.start = 0
 	s.current = 0
 	s.line = 1
 	s.source = source
-	s.tokens = make([]Token, 0)
+	s.tokens = make([]ast.Token, 0)
 
 	for !s.isAtEnd() {
 		s.start = s.current
@@ -39,48 +40,48 @@ func (s *Scanner) ScanTokens(source string) []Token {
 
 		switch c {
 		case '(':
-			s.addToken(LEFT_PAREN)
+			s.addToken(ast.LEFT_PAREN)
 		case ')':
-			s.addToken(RIGHT_PAREN)
+			s.addToken(ast.RIGHT_PAREN)
 		case '{':
-			s.addToken(LEFT_BRACE)
+			s.addToken(ast.LEFT_BRACE)
 		case '}':
-			s.addToken(RIGHT_BRACE)
+			s.addToken(ast.RIGHT_BRACE)
 		case ',':
-			s.addToken(COMMA)
+			s.addToken(ast.COMMA)
 		case '.':
-			s.addToken(DOT)
+			s.addToken(ast.DOT)
 		case ';':
-			s.addToken(SEMICOLON)
+			s.addToken(ast.SEMICOLON)
 		case '-':
-			s.addToken(MINUS)
+			s.addToken(ast.MINUS)
 		case '+':
-			s.addToken(PLUS)
+			s.addToken(ast.PLUS)
 		case '*':
-			s.addToken(STAR)
+			s.addToken(ast.STAR)
 		case '!':
 			if s.match('=') {
-				s.addToken(BANG_EQUAL)
+				s.addToken(ast.BANG_EQUAL)
 			} else {
-				s.addToken(BANG)
+				s.addToken(ast.BANG)
 			}
 		case '=':
 			if s.match('=') {
-				s.addToken(EQUAL_EQUAL)
+				s.addToken(ast.EQUAL_EQUAL)
 			} else {
-				s.addToken(EQUAL)
+				s.addToken(ast.EQUAL)
 			}
 		case '<':
 			if s.match('=') {
-				s.addToken(LESS_EQUAL)
+				s.addToken(ast.LESS_EQUAL)
 			} else {
-				s.addToken(LESS)
+				s.addToken(ast.LESS)
 			}
 		case '>':
 			if s.match('=') {
-				s.addToken(GREATER_EQUAL)
+				s.addToken(ast.GREATER_EQUAL)
 			} else {
-				s.addToken(GREATER)
+				s.addToken(ast.GREATER)
 			}
 		case '/':
 			if s.match('/') {
@@ -92,7 +93,7 @@ func (s *Scanner) ScanTokens(source string) []Token {
 				// Block Comments
 				s.matchBlockComment()
 			} else {
-				s.addToken(SLASH)
+				s.addToken(ast.SLASH)
 			}
 		case '\n':
 			s.line += 1
@@ -115,7 +116,7 @@ func (s *Scanner) ScanTokens(source string) []Token {
 		}
 	}
 
-	s.tokens = append(s.tokens, Token{type_: EOF, lexeme: "", line: s.line})
+	s.tokens = append(s.tokens, ast.Token{Type: ast.EOF, Lexeme: "", Line: s.line})
 	return s.tokens
 }
 
@@ -123,11 +124,11 @@ func (s Scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
 }
 
-func (s Scanner) generateToken(type_ TokenType) Token {
-	return Token{type_: type_, lexeme: s.source[s.start:s.current], line: s.line}
+func (s Scanner) generateToken(type_ ast.TokenType) ast.Token {
+	return ast.Token{Type: type_, Lexeme: s.source[s.start:s.current], Line: s.line}
 }
 
-func (s *Scanner) addToken(type_ TokenType) {
+func (s *Scanner) addToken(type_ ast.TokenType) {
 	s.tokens = append(s.tokens, s.generateToken(type_))
 }
 
@@ -173,9 +174,9 @@ func (s *Scanner) matchString() {
 	// Consume closing '"'
 	s.current += 1
 
-	t := s.generateToken(STRING)
-	// Store normalized String with Token
-	t.literal = NewStringLiteral(s.source[s.start+1 : s.current-1])
+	t := s.generateToken(ast.STRING)
+	// Store normalized String with ast.Token
+	t.Literal = ast.NewStringLiteral(s.source[s.start+1 : s.current-1])
 	s.tokens = append(s.tokens, t)
 }
 
@@ -194,14 +195,14 @@ func (s *Scanner) matchNumber() {
 		}
 	}
 
-	t := s.generateToken(NUMBER)
+	t := s.generateToken(ast.NUMBER)
 
-	// Store actual numberic value with Token
-	num, err := strconv.ParseFloat(t.lexeme, 64)
+	// Store actual numberic value with ast.Token
+	num, err := strconv.ParseFloat(t.Lexeme, 64)
 	// If this triggers, the number parsing above has a bug
 	util.AssertNoError(err)
 
-	t.literal = NewNumberLiteral(num)
+	t.Literal = ast.NewNumberLiteral(num)
 
 	s.tokens = append(s.tokens, t)
 }
@@ -211,16 +212,16 @@ func (s *Scanner) matchIdentifier() {
 		s.current += 1
 	}
 
-	t := s.generateToken(IDENTIFIER)
+	t := s.generateToken(ast.IDENTIFIER)
 
 	// Check if this identifier is a keyword
-	tokenType, ok := KeywordStrings[t.lexeme]
+	tokenType, ok := ast.KeywordStrings[t.Lexeme]
 	if ok {
-		t.type_ = tokenType
-		if tokenType == TRUE {
-			t.literal = NewBoolLiteral(true)
-		} else if tokenType == FALSE {
-			t.literal = NewBoolLiteral(false)
+		t.Type = tokenType
+		if tokenType == ast.TRUE {
+			t.Literal = ast.NewBoolLiteral(true)
+		} else if tokenType == ast.FALSE {
+			t.Literal = ast.NewBoolLiteral(false)
 		}
 	}
 

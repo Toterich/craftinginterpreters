@@ -1,4 +1,4 @@
-package parser
+package ast
 
 import (
 	"fmt"
@@ -16,26 +16,26 @@ const (
 )
 
 type Expr struct {
-	tag      ExprType
-	token    Token
-	children []Expr
+	Type     ExprType
+	Token    Token
+	Children []Expr
 }
 
 func NewLiteralExpr(token Token) Expr {
-	return Expr{tag: EXPR_LITERAL, token: token}
+	return Expr{Type: EXPR_LITERAL, Token: token}
 }
 
 func NewUnaryExpr(child Expr, operand Token) Expr {
-	return Expr{tag: EXPR_UNARY, token: operand, children: []Expr{child}}
+	return Expr{Type: EXPR_UNARY, Token: operand, Children: []Expr{child}}
 }
 
 func NewBinaryExpr(left Expr, operand Token, right Expr) Expr {
-	return Expr{tag: EXPR_BINARY, token: operand, children: []Expr{left, right}}
+	return Expr{Type: EXPR_BINARY, Token: operand, Children: []Expr{left, right}}
 }
 
 // Created by wrapping expression in ()
 func NewGroupingExpr(expr Expr) Expr {
-	return Expr{tag: EXPR_GROUPING, children: []Expr{expr}}
+	return Expr{Type: EXPR_GROUPING, Children: []Expr{expr}}
 }
 
 func (e Expr) PrettyPrint() string {
@@ -58,12 +58,12 @@ func (e Expr) PrettyPrint() string {
 			sb.WriteByte('-')
 		}
 
-		sb.WriteString(fmt.Sprintf("| %d: %s", elem.expr.token.line, elem.expr.token.lexeme))
+		sb.WriteString(fmt.Sprintf("| %d: %s", elem.expr.Token.Line, elem.expr.Token.Lexeme))
 		sb.WriteByte('\n')
 
 		// Children need to be added to stack in reverse order so they will be popped in original order
-		for i := len(elem.expr.children) - 1; i >= 0; i-- {
-			child := elem.expr.children[i]
+		for i := len(elem.expr.Children) - 1; i >= 0; i-- {
+			child := elem.expr.Children[i]
 			stack = append(stack, qElem{expr: child, level: elem.level + 1})
 		}
 	}

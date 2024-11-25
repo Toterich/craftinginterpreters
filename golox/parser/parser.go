@@ -1,21 +1,22 @@
 package parser
 
 import (
+	"toterich/golox/ast"
 	"toterich/golox/util"
 )
 
 // A parserError, which in addition to an error string contains the Token where the error occured
 type parserError interface {
-	Token() Token
+	Token() ast.Token
 	error
 }
 
 type parserErrorImpl struct {
-	token Token
+	token ast.Token
 	msg   string
 }
 
-func (pe parserErrorImpl) Token() Token {
+func (pe parserErrorImpl) Token() ast.Token {
 	return pe.token
 }
 
@@ -23,23 +24,23 @@ func (pe parserErrorImpl) Error() string {
 	return pe.msg
 }
 
-func newParserError(token Token, msg string) parserError {
+func newParserError(token ast.Token, msg string) parserError {
 	return parserErrorImpl{token: token, msg: msg}
 }
 
 // A recursive-descent parser for transforming a stream of Tokens into an AST
 type Parser struct {
-	tokens  []Token
+	tokens  []ast.Token
 	current int
 }
 
-func (p *Parser) Parse(input []Token) Expr {
+func (p *Parser) Parse(input []ast.Token) ast.Expr {
 	p.tokens = input
 	p.current = 0
 
 	expr, err := p.parseExpression()
 	if err != nil {
-		util.LogError(err.Token().line, err.Error())
+		util.LogError(err.Token().Line, err.Error())
 	}
 
 	return expr
@@ -63,98 +64,98 @@ Every rule is implemented as a single parser function below
 */
 
 // expression     -> comma_op
-func (p *Parser) parseExpression() (Expr, parserError) {
+func (p *Parser) parseExpression() (ast.Expr, parserError) {
 	return p.parseCommaOp()
 }
 
 // comma_op       -> equality ("," equality)* ;
-func (p *Parser) parseCommaOp() (Expr, parserError) {
+func (p *Parser) parseCommaOp() (ast.Expr, parserError) {
 	expr, err := p.parseEquality()
 	if err != nil {
-		return Expr{}, err
+		return ast.Expr{}, err
 	}
 
-	for p.match(COMMA) {
+	for p.match(ast.COMMA) {
 		operator := p.previous()
 
 		right, err := p.parseEquality()
 		if err != nil {
 			return expr, err
 		}
-		expr = NewBinaryExpr(expr, operator, right)
+		expr = ast.NewBinaryExpr(expr, operator, right)
 	}
 
 	return expr, nil
 }
 
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-func (p *Parser) parseEquality() (Expr, parserError) {
+func (p *Parser) parseEquality() (ast.Expr, parserError) {
 	expr, err := p.parseComparison()
 	if err != nil {
-		return Expr{}, err
+		return ast.Expr{}, err
 	}
 
-	for p.match(BANG_EQUAL, EQUAL_EQUAL) {
+	for p.match(ast.BANG_EQUAL, ast.EQUAL_EQUAL) {
 		operator := p.previous()
 
 		right, err := p.parseComparison()
 		if err != nil {
 			return expr, err
 		}
-		expr = NewBinaryExpr(expr, operator, right)
+		expr = ast.NewBinaryExpr(expr, operator, right)
 	}
 
 	return expr, nil
 }
 
 // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-func (p *Parser) parseComparison() (Expr, parserError) {
+func (p *Parser) parseComparison() (ast.Expr, parserError) {
 	expr, err := p.parseTerm()
 	if err != nil {
-		return Expr{}, err
+		return ast.Expr{}, err
 	}
 
-	for p.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) {
+	for p.match(ast.GREATER, ast.GREATER_EQUAL, ast.LESS, ast.LESS_EQUAL) {
 		operator := p.previous()
 
 		right, err := p.parseTerm()
 		if err != nil {
 			return expr, err
 		}
-		expr = NewBinaryExpr(expr, operator, right)
+		expr = ast.NewBinaryExpr(expr, operator, right)
 	}
 
 	return expr, nil
 }
 
 // term           → factor ( ( "-" | "+" ) factor )* ;
-func (p *Parser) parseTerm() (Expr, parserError) {
+func (p *Parser) parseTerm() (ast.Expr, parserError) {
 	expr, err := p.parseFactor()
 	if err != nil {
-		return Expr{}, err
+		return ast.Expr{}, err
 	}
 
-	for p.match(MINUS, PLUS) {
+	for p.match(ast.MINUS, ast.PLUS) {
 		operator := p.previous()
 
 		right, err := p.parseFactor()
 		if err != nil {
 			return expr, err
 		}
-		expr = NewBinaryExpr(expr, operator, right)
+		expr = ast.NewBinaryExpr(expr, operator, right)
 	}
 
 	return expr, nil
 }
 
 // factor         → unary ( ( "/" | "*" ) unary )* ;
-func (p *Parser) parseFactor() (Expr, parserError) {
+func (p *Parser) parseFactor() (ast.Expr, parserError) {
 	expr, err := p.parseUnary()
 	if err != nil {
-		return Expr{}, err
+		return ast.Expr{}, err
 	}
 
-	for p.match(SLASH, STAR) {
+	for p.match(ast.SLASH, ast.STAR) {
 		operator := p.previous()
 
 		right, err := p.parseUnary()
@@ -162,48 +163,48 @@ func (p *Parser) parseFactor() (Expr, parserError) {
 			return expr, err
 		}
 
-		expr = NewBinaryExpr(expr, operator, right)
+		expr = ast.NewBinaryExpr(expr, operator, right)
 	}
 
 	return expr, nil
 }
 
 // unary          → ( "!" | "-" ) parseUnary | primary ;
-func (p *Parser) parseUnary() (Expr, parserError) {
-	if p.match(BANG, MINUS) {
+func (p *Parser) parseUnary() (ast.Expr, parserError) {
+	if p.match(ast.BANG, ast.MINUS) {
 		operator := p.previous()
 		child, err := p.parseUnary()
 		if err != nil {
-			return Expr{}, err
+			return ast.Expr{}, err
 		}
-		return NewUnaryExpr(child, operator), nil
+		return ast.NewUnaryExpr(child, operator), nil
 	}
 
 	return p.parsePrimary()
 }
 
 // primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
-func (p *Parser) parsePrimary() (Expr, parserError) {
-	if !p.match(NUMBER, STRING, TRUE, FALSE, NIL, LEFT_PAREN) {
-		return Expr{}, newParserError(p.peek(), "Expected Expression")
+func (p *Parser) parsePrimary() (ast.Expr, parserError) {
+	if !p.match(ast.NUMBER, ast.STRING, ast.TRUE, ast.FALSE, ast.NIL, ast.LEFT_PAREN) {
+		return ast.Expr{}, newParserError(p.peek(), "Expected Expression")
 	}
 
 	token := p.previous()
 
-	if token.type_ == LEFT_PAREN {
+	if token.Type == ast.LEFT_PAREN {
 		expr, err := p.parseExpression()
 		if err != nil {
-			return Expr{}, err
+			return ast.Expr{}, err
 		}
-		_, err = p.consume(RIGHT_PAREN, "Expected ')' after expression.")
-		return NewGroupingExpr(expr), err
+		_, err = p.consume(ast.RIGHT_PAREN, "Expected ')' after expression.")
+		return ast.NewGroupingExpr(expr), err
 	}
 
-	return NewLiteralExpr(token), nil
+	return ast.NewLiteralExpr(token), nil
 }
 
 // Checks if the current Token is one of the given types and if so, consumes it and returns true
-func (p *Parser) match(tokens ...TokenType) bool {
+func (p *Parser) match(tokens ...ast.TokenType) bool {
 	for _, token := range tokens {
 		if p.check(token) {
 			p.current += 1
@@ -216,7 +217,7 @@ func (p *Parser) match(tokens ...TokenType) bool {
 
 // If the current Token is of the given type, consumes and returns it. Otherwise, returns the current Token without
 // consuming it and an error containing the given message.
-func (p *Parser) consume(token TokenType, errMsg string) (Token, parserError) {
+func (p *Parser) consume(token ast.TokenType, errMsg string) (ast.Token, parserError) {
 	if p.match(token) {
 		return p.previous(), nil
 	}
@@ -224,28 +225,28 @@ func (p *Parser) consume(token TokenType, errMsg string) (Token, parserError) {
 	return p.peek(), newParserError(p.peek(), errMsg)
 }
 
-// Returns true if the current Token is of the given TokenType
-func (p Parser) check(token TokenType) bool {
+// Returns true if the current ast.Token is of the given ast.TokenType
+func (p Parser) check(token ast.TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
-	return p.peek().type_ == token
+	return p.peek().Type == token
 }
 
-// Returns the next Token without consuming it
-func (p Parser) peek() Token {
+// Returns the next ast.Token without consuming it
+func (p Parser) peek() ast.Token {
 	return p.tokens[p.current]
 }
 
-// Returns the previously consumed Token
-func (p Parser) previous() Token {
+// Returns the previously consumed ast.Token
+func (p Parser) previous() ast.Token {
 	util.Assert(p.current > 0, "This may only be called when p.current > 0")
 	return p.tokens[p.current-1]
 }
 
-// Returns true if all Tokens have been consumed
+// Returns true if all ast.Tokens have been consumed
 func (p Parser) isAtEnd() bool {
-	return p.peek().type_ == EOF
+	return p.peek().Type == ast.EOF
 }
 
 // Skips all tokens until the beginning of the next statement. This is required e.g. after a parsing error,
@@ -255,27 +256,27 @@ func (p *Parser) skipToNextStatement() {
 
 	for !p.isAtEnd() {
 		// Statement ends after semicolon
-		if p.previous().type_ == SEMICOLON {
+		if p.previous().Type == ast.SEMICOLON {
 			return
 		}
 
 		// Statement begins with one of these keywords
-		switch p.peek().type_ {
-		case CLASS:
+		switch p.peek().Type {
+		case ast.CLASS:
 			fallthrough
-		case FUN:
+		case ast.FUN:
 			fallthrough
-		case VAR:
+		case ast.VAR:
 			fallthrough
-		case FOR:
+		case ast.FOR:
 			fallthrough
-		case IF:
+		case ast.IF:
 			fallthrough
-		case WHILE:
+		case ast.WHILE:
 			fallthrough
-		case PRINT:
+		case ast.PRINT:
 			fallthrough
-		case RETURN:
+		case ast.RETURN:
 			return
 		}
 

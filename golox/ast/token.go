@@ -1,4 +1,4 @@
-package parser
+package ast
 
 import "fmt"
 
@@ -83,29 +83,29 @@ const (
 )
 
 type LiteralValue struct {
-	type_ LoxType
-	value any
+	Type  LoxType
+	Value any
 }
 
 func NewStringLiteral(str string) LiteralValue {
-	return LiteralValue{type_: LT_STRING, value: str}
+	return LiteralValue{Type: LT_STRING, Value: str}
 }
 
 func NewNumberLiteral(num float64) LiteralValue {
-	return LiteralValue{type_: LT_NUMBER, value: num}
+	return LiteralValue{Type: LT_NUMBER, Value: num}
 }
 
 func NewBoolLiteral(val bool) LiteralValue {
-	return LiteralValue{type_: LT_BOOL, value: val}
+	return LiteralValue{Type: LT_BOOL, Value: val}
 }
 
 type Token struct {
-	type_   TokenType
-	lexeme  string
-	literal LiteralValue
-	line    int
+	Type    TokenType
+	Lexeme  string
+	Literal LiteralValue
+	Line    int
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("%d: %s (%d)", t.type_, t.lexeme, t.line)
+	return fmt.Sprintf("%d: %s (%d)", t.Type, t.Lexeme, t.Line)
 }
