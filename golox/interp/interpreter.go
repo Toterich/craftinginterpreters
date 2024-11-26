@@ -27,7 +27,7 @@ func evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 	switch expr.Token.Type {
 	case ast.MINUS:
 		if right.Type != ast.LT_NUMBER {
-			return ast.NewNilValue(), fmt.Errorf("expected number after unary operator -, got %s", right.Type.String())
+			return ast.NewNilValue(), fmt.Errorf("expected number after unary operator -, got %s", right.Type)
 		}
 		return ast.NewNumberValue(-right.Number()), nil
 	case ast.BANG:

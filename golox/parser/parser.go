@@ -5,45 +5,25 @@ import (
 	"toterich/golox/util"
 )
 
-// A parserError, which in addition to an error string contains the Token where the error occured
-type parserError interface {
-	Token() ast.Token
-	error
-}
-
-type parserErrorImpl struct {
-	token ast.Token
-	msg   string
-}
-
-func (pe parserErrorImpl) Token() ast.Token {
-	return pe.token
-}
-
-func (pe parserErrorImpl) Error() string {
-	return pe.msg
-}
-
-func newParserError(token ast.Token, msg string) parserError {
-	return parserErrorImpl{token: token, msg: msg}
-}
-
 // A recursive-descent parser for transforming a stream of Tokens into an AST
 type Parser struct {
 	tokens  []ast.Token
 	current int
 }
 
-func (p *Parser) Parse(input []ast.Token) ast.Expr {
+func (p *Parser) Parse(input []ast.Token) (ast.Expr, []error) {
 	p.tokens = input
 	p.current = 0
 
+	var errs []error
 	expr, err := p.parseExpression()
 	if err != nil {
-		util.LogError(err.Token().Line, err.Error())
+		errs = []error{err}
+	} else {
+		errs = nil
 	}
 
-	return expr
+	return expr, errs
 }
 
 /*
@@ -64,12 +44,12 @@ Every rule is implemented as a single parser function below
 */
 
 // expression     -> comma_op
-func (p *Parser) parseExpression() (ast.Expr, parserError) {
+func (p *Parser) parseExpression() (ast.Expr, error) {
 	return p.parseCommaOp()
 }
 
 // comma_op       -> equality ("," equality)* ;
-func (p *Parser) parseCommaOp() (ast.Expr, parserError) {
+func (p *Parser) parseCommaOp() (ast.Expr, error) {
 	expr, err := p.parseEquality()
 	if err != nil {
 		return ast.Expr{}, err
@@ -89,7 +69,7 @@ func (p *Parser) parseCommaOp() (ast.Expr, parserError) {
 }
 
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-func (p *Parser) parseEquality() (ast.Expr, parserError) {
+func (p *Parser) parseEquality() (ast.Expr, error) {
 	expr, err := p.parseComparison()
 	if err != nil {
 		return ast.Expr{}, err
@@ -109,7 +89,7 @@ func (p *Parser) parseEquality() (ast.Expr, parserError) {
 }
 
 // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-func (p *Parser) parseComparison() (ast.Expr, parserError) {
+func (p *Parser) parseComparison() (ast.Expr, error) {
 	expr, err := p.parseTerm()
 	if err != nil {
 		return ast.Expr{}, err
@@ -129,7 +109,7 @@ func (p *Parser) parseComparison() (ast.Expr, parserError) {
 }
 
 // term           → factor ( ( "-" | "+" ) factor )* ;
-func (p *Parser) parseTerm() (ast.Expr, parserError) {
+func (p *Parser) parseTerm() (ast.Expr, error) {
 	expr, err := p.parseFactor()
 	if err != nil {
 		return ast.Expr{}, err
@@ -149,7 +129,7 @@ func (p *Parser) parseTerm() (ast.Expr, parserError) {
 }
 
 // factor         → unary ( ( "/" | "*" ) unary )* ;
-func (p *Parser) parseFactor() (ast.Expr, parserError) {
+func (p *Parser) parseFactor() (ast.Expr, error) {
 	expr, err := p.parseUnary()
 	if err != nil {
 		return ast.Expr{}, err
@@ -170,7 +150,7 @@ func (p *Parser) parseFactor() (ast.Expr, parserError) {
 }
 
 // unary          → ( "!" | "-" ) parseUnary | primary ;
-func (p *Parser) parseUnary() (ast.Expr, parserError) {
+func (p *Parser) parseUnary() (ast.Expr, error) {
 	if p.match(ast.BANG, ast.MINUS) {
 		operator := p.previous()
 		child, err := p.parseUnary()
@@ -184,9 +164,9 @@ func (p *Parser) parseUnary() (ast.Expr, parserError) {
 }
 
 // primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
-func (p *Parser) parsePrimary() (ast.Expr, parserError) {
+func (p *Parser) parsePrimary() (ast.Expr, error) {
 	if !p.match(ast.NUMBER, ast.STRING, ast.TRUE, ast.FALSE, ast.NIL, ast.LEFT_PAREN) {
-		return ast.Expr{}, newParserError(p.peek(), "Expected Expression")
+		return ast.Expr{}, util.NewSyntaxError(p.peek(), "Expected Expression")
 	}
 
 	token := p.previous()
@@ -217,12 +197,12 @@ func (p *Parser) match(tokens ...ast.TokenType) bool {
 
 // If the current Token is of the given type, consumes and returns it. Otherwise, returns the current Token without
 // consuming it and an error containing the given message.
-func (p *Parser) consume(token ast.TokenType, errMsg string) (ast.Token, parserError) {
+func (p *Parser) consume(token ast.TokenType, errMsg string) (ast.Token, error) {
 	if p.match(token) {
 		return p.previous(), nil
 	}
 
-	return p.peek(), newParserError(p.peek(), errMsg)
+	return p.peek(), util.NewSyntaxError(p.peek(), errMsg)
 }
 
 // Returns true if the current ast.Token is of the given ast.TokenType

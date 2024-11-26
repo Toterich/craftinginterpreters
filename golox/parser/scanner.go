@@ -24,14 +24,16 @@ type Scanner struct {
 	line    int
 	source  string
 	tokens  []ast.Token
+	errs    []error
 }
 
-func (s *Scanner) ScanTokens(source string) []ast.Token {
+func (s *Scanner) ScanTokens(source string) ([]ast.Token, []error) {
 	s.start = 0
 	s.current = 0
 	s.line = 1
 	s.source = source
 	s.tokens = make([]ast.Token, 0)
+	s.errs = nil
 
 	for !s.isAtEnd() {
 		s.start = s.current
@@ -111,13 +113,13 @@ func (s *Scanner) ScanTokens(source string) []ast.Token {
 			} else if isAlpha(c) {
 				s.matchIdentifier()
 			} else {
-				util.LogError(s.line, "Unexpected character.")
+				s.addError(s.line, c, "Unexpected character.")
 			}
 		}
 	}
 
 	s.tokens = append(s.tokens, ast.Token{Type: ast.EOF, Lexeme: "", Line: s.line})
-	return s.tokens
+	return s.tokens, s.errs
 }
 
 func (s Scanner) isAtEnd() bool {
@@ -167,7 +169,7 @@ func (s *Scanner) matchString() {
 	}
 
 	if s.isAtEnd() {
-		util.LogError(s.line, "Unterminated string.")
+		s.addError(s.line, '\x00', "Unterminated string.")
 		return
 	}
 
@@ -245,4 +247,8 @@ func (s *Scanner) matchBlockComment() {
 			s.current += 1
 		}
 	}
+}
+
+func (s *Scanner) addError(line int, char byte, msg string) {
+	s.errs = append(s.errs, util.NewLexError(line, char, msg))
 }

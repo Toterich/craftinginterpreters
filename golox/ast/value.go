@@ -2,10 +2,11 @@ package ast
 
 type LoxType int
 
+// All supported types in Lox
 const (
 	LT_NIL LoxType = iota
 	LT_STRING
-	LT_NUMBER
+	LT_NUMBER // 64bit float
 	LT_BOOL
 )
 
@@ -24,6 +25,8 @@ func (t LoxType) String() string {
 	}
 }
 
+// A Value in Lox, represented by a type and a pointer to the actual value.
+// Use Type Assertions (see below) to extract the value
 type LoxValue struct {
 	Type  LoxType
 	Value any
