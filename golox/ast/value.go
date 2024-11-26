@@ -70,7 +70,7 @@ func (v LoxValue) String() string {
 	case LT_BOOL:
 		return strconv.FormatBool(v.AsBool())
 	case LT_NUMBER:
-		return strconv.FormatFloat(v.AsNumber(), 'f', 3, 64)
+		return strconv.FormatFloat(v.AsNumber(), 'g', -1, 64)
 	case LT_STRING:
 		return v.AsString()
 	default:

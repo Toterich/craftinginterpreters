@@ -6,9 +6,12 @@ import (
 	"log"
 	"os"
 	"toterich/golox/interp"
-	"toterich/golox/parser"
+	"toterich/golox/parse"
 	"toterich/golox/util"
 )
+
+var scanner parse.Scanner
+var parser parse.Parser
 
 // Check for error and exit
 // If exitCode is 0, only log error and don't exit
@@ -22,7 +25,6 @@ func check(e error, exitCode int) {
 }
 
 func run(data string) error {
-	scanner := parser.Scanner{}
 	tokens, errs := scanner.ScanTokens(data)
 	//	fmt.Println(tokens)
 	if errs != nil {
@@ -30,7 +32,6 @@ func run(data string) error {
 		return fmt.Errorf("errors in Scanner")
 	}
 
-	parser := parser.Parser{}
 	expr, errs := parser.Parse(tokens)
 	//	fmt.Print(expr.PrettyPrint())
 	if errs != nil {

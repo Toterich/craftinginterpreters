@@ -52,22 +52,28 @@ func (e RuntimeError) Error() string {
 
 func LogErrors(errs ...error) {
 	for _, err := range errs {
-		var le LexError
-		if errors.As(err, &le) {
-			log.Printf("[line %d] Lexical Error at Char '%c': %s", le.Line, le.Char, le.Msg)
-			continue
+		{
+			var e LexError
+			if errors.As(err, &e) {
+				log.Printf("[line %d] Lexical Error at Char '%c': %s", e.Line, e.Char, e.Msg)
+				continue
+			}
 		}
 
-		var se SyntaxError
-		if errors.As(err, &se) {
-			log.Printf("[line %d] Syntax Error at Token '%s': %s", se.Token.Line, se.Token.Lexeme, se.Msg)
-			continue
+		{
+			var e SyntaxError
+			if errors.As(err, &e) {
+				log.Printf("[line %d] Syntax Error at Token '%s': %s", e.Token.Line, e.Token.Lexeme, e.Msg)
+				continue
+			}
 		}
 
-		var re RuntimeError
-		if errors.As(err, &re) {
-			log.Printf("[line %d] Runtime Error at Token '%s': %s", re.Token.Line, re.Token.Lexeme, re.Msg)
-			continue
+		{
+			var e RuntimeError
+			if errors.As(err, &e) {
+				log.Printf("[line %d] Runtime Error at '%s': %s", e.Token.Line, e.Token.Lexeme, e.Msg)
+				continue
+			}
 		}
 
 		log.Println(err)

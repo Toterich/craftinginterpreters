@@ -63,6 +63,9 @@ func evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
+		if right.AsNumber() == 0 {
+			return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "division by zero")
+		}
 		return ast.NewNumberValue(left.AsNumber() / right.AsNumber()), nil
 	case ast.STAR:
 		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
@@ -157,7 +160,7 @@ func checkTypes(token ast.Token, expected []ast.LoxType, actual []ast.LoxType) e
 
 	var msg string
 	if len(expected) == 1 {
-		msg = fmt.Sprintf("Expected %s as arguments, got %s", expected[0], actual[0])
+		msg = fmt.Sprintf("Expected %s as argument, got %s", expected[0], actual[0])
 	} else {
 		msg = fmt.Sprintf("Expected %s as arguments, got %s", expected, actual)
 	}
