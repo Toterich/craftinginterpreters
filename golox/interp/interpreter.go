@@ -3,10 +3,13 @@ package interp
 import (
 	"fmt"
 	"toterich/golox/ast"
+	"toterich/golox/util"
 )
 
 func Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 	switch expr.Type {
+	case ast.EXPR_LITERAL:
+		return expr.Token.Literal, nil
 	case ast.EXPR_UNARY:
 		return evalUnary(expr)
 	case ast.EXPR_BINARY:
@@ -26,10 +29,11 @@ func evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 
 	switch expr.Token.Type {
 	case ast.MINUS:
-		if right.Type != ast.LT_NUMBER {
-			return ast.NewNilValue(), fmt.Errorf("expected number after unary operator -, got %s", right.Type)
+		err := checkType(expr.Token, ast.LT_NUMBER, right.Type)
+		if err != nil {
+			return ast.NewNilValue(), err
 		}
-		return ast.NewNumberValue(-right.Number()), nil
+		return ast.NewNumberValue(-right.AsNumber()), nil
 	case ast.BANG:
 		return ast.NewBoolValue(isTruthy(right)), nil
 	}
@@ -49,27 +53,57 @@ func evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 
 	switch expr.Token.Type {
 	case ast.MINUS:
-		return ast.NewNumberValue(left.Number() - right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewNumberValue(left.AsNumber() - right.AsNumber()), nil
 	case ast.SLASH:
-		return ast.NewNumberValue(left.Number() / right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewNumberValue(left.AsNumber() / right.AsNumber()), nil
 	case ast.STAR:
-		return ast.NewNumberValue(left.Number() * right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewNumberValue(left.AsNumber() * right.AsNumber()), nil
 	case ast.PLUS:
 		if left.Type == ast.LT_NUMBER && right.Type == ast.LT_NUMBER {
-			return ast.NewNumberValue(left.Number() + right.Number()), nil
+			return ast.NewNumberValue(left.AsNumber() + right.AsNumber()), nil
 		} else if left.Type == ast.LT_STRING && right.Type == ast.LT_STRING {
-			return ast.NewStringValue(left.String() + right.String()), nil
+			return ast.NewStringValue(left.AsString() + right.AsString()), nil
 		} else {
-			// TODO: Report Error, mismatching types for operand +
+			return ast.NewNilValue(),
+				util.NewRuntimeError(expr.Token,
+					fmt.Sprintf("Expected either [Number Number] or [String String] as operator's arguments, got [%s %s]", left.Type, right.Type))
 		}
 	case ast.GREATER:
-		return ast.NewBoolValue(left.Number() > right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewBoolValue(left.AsNumber() > right.AsNumber()), nil
 	case ast.GREATER_EQUAL:
-		return ast.NewBoolValue(left.Number() >= right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewBoolValue(left.AsNumber() >= right.AsNumber()), nil
 	case ast.LESS:
-		return ast.NewBoolValue(left.Number() < right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewBoolValue(left.AsNumber() < right.AsNumber()), nil
 	case ast.LESS_EQUAL:
-		return ast.NewBoolValue(left.Number() <= right.Number()), nil
+		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+		return ast.NewBoolValue(left.AsNumber() <= right.AsNumber()), nil
 	case ast.BANG_EQUAL:
 		return ast.NewBoolValue(!isEqual(left, right)), nil
 	case ast.EQUAL_EQUAL:
@@ -88,7 +122,7 @@ func isTruthy(value ast.LoxValue) bool {
 	case ast.LT_NIL:
 		return false
 	case ast.LT_BOOL:
-		return value.Bool()
+		return value.AsBool()
 	}
 
 	return true
@@ -100,4 +134,33 @@ func isEqual(left ast.LoxValue, right ast.LoxValue) bool {
 	}
 
 	return left == right
+}
+
+func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error {
+	return checkTypes(token, []ast.LoxType{expected}, []ast.LoxType{actual})
+}
+
+func checkTypes(token ast.Token, expected []ast.LoxType, actual []ast.LoxType) error {
+	util.Assert(len(expected) == len(actual), "expected and actual need to be of equal length")
+
+	equal := true
+	for i := 0; i < len(expected); i += 1 {
+		if expected[i] != actual[i] {
+			equal = false
+			break
+		}
+	}
+
+	if equal {
+		return nil
+	}
+
+	var msg string
+	if len(expected) == 1 {
+		msg = fmt.Sprintf("Expected %s as arguments, got %s", expected[0], actual[0])
+	} else {
+		msg = fmt.Sprintf("Expected %s as arguments, got %s", expected, actual)
+	}
+
+	return util.NewRuntimeError(token, msg)
 }

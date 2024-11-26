@@ -1,5 +1,7 @@
 package ast
 
+import "strconv"
+
 type LoxType int
 
 // All supported types in Lox
@@ -48,14 +50,30 @@ func NewBoolValue(val bool) LoxValue {
 	return LoxValue{Type: LT_BOOL, Value: val}
 }
 
-func (v LoxValue) String() string {
+func (v LoxValue) AsString() string {
 	return v.Value.(string)
 }
 
-func (v LoxValue) Number() float64 {
+func (v LoxValue) AsNumber() float64 {
 	return v.Value.(float64)
 }
 
-func (v LoxValue) Bool() bool {
+func (v LoxValue) AsBool() bool {
 	return v.Value.(bool)
+}
+
+// String representation of the LoxValue, don't confuse with AsString()!
+func (v LoxValue) String() string {
+	switch v.Type {
+	case LT_NIL:
+		return "nil"
+	case LT_BOOL:
+		return strconv.FormatBool(v.AsBool())
+	case LT_NUMBER:
+		return strconv.FormatFloat(v.AsNumber(), 'f', 3, 64)
+	case LT_STRING:
+		return v.AsString()
+	default:
+		panic("Incomplete Switch")
+	}
 }

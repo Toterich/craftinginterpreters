@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"toterich/golox/interp"
 	"toterich/golox/parser"
 	"toterich/golox/util"
 )
@@ -23,7 +24,7 @@ func check(e error, exitCode int) {
 func run(data string) error {
 	scanner := parser.Scanner{}
 	tokens, errs := scanner.ScanTokens(data)
-	fmt.Println(tokens)
+	//	fmt.Println(tokens)
 	if errs != nil {
 		util.LogErrors(errs...)
 		return fmt.Errorf("errors in Scanner")
@@ -31,11 +32,19 @@ func run(data string) error {
 
 	parser := parser.Parser{}
 	expr, errs := parser.Parse(tokens)
-	fmt.Print(expr.PrettyPrint())
+	//	fmt.Print(expr.PrettyPrint())
 	if errs != nil {
 		util.LogErrors(errs...)
 		return fmt.Errorf("errors in Parser")
 	}
+
+	value, err := interp.Evaluate(expr)
+	if err != nil {
+		util.LogErrors(err)
+		return fmt.Errorf("errors in Interpreter")
+	}
+
+	fmt.Println(value)
 
 	return nil
 }
