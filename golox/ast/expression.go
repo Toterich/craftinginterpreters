@@ -13,6 +13,7 @@ const (
 	EXPR_UNARY
 	EXPR_BINARY
 	EXPR_GROUPING
+	EXPR_IDENTIFIER
 )
 
 type Expr struct {
@@ -38,6 +39,11 @@ func NewGroupingExpr(expr Expr) Expr {
 	return Expr{Type: EXPR_GROUPING, Children: []Expr{expr}}
 }
 
+func NewIdentifierExpression(token Token) Expr {
+	return Expr{Type: EXPR_IDENTIFIER, Token: token}
+}
+
+// TODO: Hard to maintain for new types and only needed for printf debugging. Consider removing.
 func (e Expr) PrettyPrint() string {
 	sb := strings.Builder{}
 

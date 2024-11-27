@@ -15,7 +15,7 @@ func NewInterpreter() Interpreter {
 
 func (i *Interpreter) Execute(stmt ast.Stmt) error {
 
-	value, err := Evaluate(stmt.Expr)
+	value, err := i.Evaluate(stmt.Expr)
 
 	// Execute side effects
 	switch stmt.Type {

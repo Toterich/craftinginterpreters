@@ -209,24 +209,26 @@ func (p *Parser) parseUnary() (ast.Expr, error) {
 	return p.parsePrimary()
 }
 
-// primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+// primary        → NUMBER | STRING | IDENTIFIER | "true" | "false" | "nil" | "(" expression ")" ;
 func (p *Parser) parsePrimary() (ast.Expr, error) {
-	if !p.match(ast.NUMBER, ast.STRING, ast.TRUE, ast.FALSE, ast.NIL, ast.LEFT_PAREN) {
-		return ast.Expr{}, util.NewSyntaxError(p.peek(), "Expected Expression")
+	if p.match(ast.NUMBER, ast.STRING, ast.TRUE, ast.FALSE, ast.NIL) {
+		return ast.NewLiteralExpr(p.previous()), nil
 	}
 
-	token := p.previous()
+	if p.match(ast.IDENTIFIER) {
+		return ast.NewIdentifierExpression(p.previous()), nil
+	}
 
-	if token.Type == ast.LEFT_PAREN {
+	if p.match(ast.LEFT_PAREN) {
 		expr, err := p.parseExpression()
 		if err != nil {
 			return ast.Expr{}, err
 		}
-		_, err = p.consume(ast.RIGHT_PAREN, "Expected ')' after expression.")
+		_, err = p.consume(ast.RIGHT_PAREN, "expected ')' after expression.")
 		return ast.NewGroupingExpr(expr), err
 	}
 
-	return ast.NewLiteralExpr(token), nil
+	return ast.Expr{}, util.NewSyntaxError(p.peek(), "expected Expression.")
 }
 
 // Checks if the current Token is one of the given types and if so, consumes it and returns true

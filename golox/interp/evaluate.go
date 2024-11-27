@@ -6,23 +6,29 @@ import (
 	"toterich/golox/util"
 )
 
-func Evaluate(expr ast.Expr) (ast.LoxValue, error) {
+func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 	switch expr.Type {
 	case ast.EXPR_LITERAL:
 		return expr.Token.Literal, nil
+	case ast.EXPR_IDENTIFIER:
+		val, ok := i.vars[expr.Token.Lexeme]
+		if !ok {
+			return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "undeclared identifier.")
+		}
+		return val, nil
 	case ast.EXPR_UNARY:
-		return evalUnary(expr)
+		return i.evalUnary(expr)
 	case ast.EXPR_BINARY:
-		return evalBinary(expr)
+		return i.evalBinary(expr)
 	case ast.EXPR_GROUPING:
-		return evalGrouping(expr)
+		return i.evalGrouping(expr)
 	}
 
 	panic(fmt.Sprintf("Unhandled expression type %d in Evaluate", expr.Type))
 }
 
-func evalUnary(expr ast.Expr) (ast.LoxValue, error) {
-	right, err := Evaluate(expr.Children[0])
+func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
+	right, err := i.Evaluate(expr.Children[0])
 	if err != nil {
 		return ast.NewNilValue(), err
 	}
@@ -41,12 +47,12 @@ func evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 	panic(fmt.Sprintf("Unhandled operator %d in Unary Expression", expr.Token.Type))
 }
 
-func evalBinary(expr ast.Expr) (ast.LoxValue, error) {
-	left, err := Evaluate(expr.Children[0])
+func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
+	left, err := i.Evaluate(expr.Children[0])
 	if err != nil {
 		return ast.NewNilValue(), err
 	}
-	right, err := Evaluate(expr.Children[1])
+	right, err := i.Evaluate(expr.Children[1])
 	if err != nil {
 		return ast.NewNilValue(), err
 	}
@@ -116,8 +122,8 @@ func evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 	panic(fmt.Sprintf("Unhandled operator %d in Binary Expression", expr.Token.Type))
 }
 
-func evalGrouping(expr ast.Expr) (ast.LoxValue, error) {
-	return Evaluate(expr.Children[0])
+func (i Interpreter) evalGrouping(expr ast.Expr) (ast.LoxValue, error) {
+	return i.Evaluate(expr.Children[0])
 }
 
 func isTruthy(value ast.LoxValue) bool {

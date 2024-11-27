@@ -11,5 +11,5 @@ term           -> factor ( ( "-" | "+" ) factor )* ;
 factor         -> unary ( ( "/" | "*" ) unary )* ;
 unary          -> ( "!" | "-" ) unary
                | primary ;
-primary        -> NUMBER | STRING | "true" | "false" | "nil"
+primary        -> NUMBER | STRING | IDENTIFIER | "true" | "false" | "nil"
                | "(" expression ")" ;
