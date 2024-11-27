@@ -13,7 +13,7 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 	case ast.EXPR_IDENTIFIER:
 		val, ok := i.vars[expr.Token.Lexeme]
 		if !ok {
-			return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "undeclared identifier.")
+			return val, util.NewRuntimeError(expr.Token, "undeclared identifier.")
 		}
 		return val, nil
 	case ast.EXPR_UNARY:
@@ -22,6 +22,8 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 		return i.evalBinary(expr)
 	case ast.EXPR_GROUPING:
 		return i.evalGrouping(expr)
+	case ast.EXPR_ASSIGN:
+		return i.evalAssignment(expr)
 	}
 
 	panic(fmt.Sprintf("Unhandled expression type %d in Evaluate", expr.Type))
@@ -30,14 +32,14 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 	right, err := i.Evaluate(expr.Children[0])
 	if err != nil {
-		return ast.NewNilValue(), err
+		return right, err
 	}
 
 	switch expr.Token.Type {
 	case ast.MINUS:
 		err := checkType(expr.Token, ast.LT_NUMBER, right.Type)
 		if err != nil {
-			return ast.NewNilValue(), err
+			return right, err
 		}
 		return ast.NewNumberValue(-right.AsNumber()), nil
 	case ast.BANG:
@@ -50,11 +52,11 @@ func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 	left, err := i.Evaluate(expr.Children[0])
 	if err != nil {
-		return ast.NewNilValue(), err
+		return left, err
 	}
 	right, err := i.Evaluate(expr.Children[1])
 	if err != nil {
-		return ast.NewNilValue(), err
+		return right, err
 	}
 
 	switch expr.Token.Type {
@@ -124,6 +126,21 @@ func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 
 func (i Interpreter) evalGrouping(expr ast.Expr) (ast.LoxValue, error) {
 	return i.Evaluate(expr.Children[0])
+}
+
+func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
+	_, ok := i.vars[expr.Token.Lexeme]
+	if !ok {
+		return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "left hand side of assignment has not been declared")
+	}
+
+	val, err := i.Evaluate(expr.Children[0])
+	if err != nil {
+		return val, err
+	}
+
+	i.vars[expr.Token.Lexeme] = val
+	return val, nil
 }
 
 func isTruthy(value ast.LoxValue) bool {

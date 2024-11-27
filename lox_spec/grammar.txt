@@ -4,7 +4,8 @@ varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
 printStmt      -> "print" expression ";"
 exprStmt       -> expression ";"
 expression     -> comma_op
-comma_op       -> equality ("," equality)* ;
+comma_op       -> assignment ("," assignment)* ;
+assignment     -> IDENTIFIER "=" assignment | equality;
 equality       -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           -> factor ( ( "-" | "+" ) factor )* ;

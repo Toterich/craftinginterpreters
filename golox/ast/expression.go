@@ -14,6 +14,7 @@ const (
 	EXPR_BINARY
 	EXPR_GROUPING
 	EXPR_IDENTIFIER
+	EXPR_ASSIGN
 )
 
 type Expr struct {
@@ -41,6 +42,11 @@ func NewGroupingExpr(expr Expr) Expr {
 
 func NewIdentifierExpression(token Token) Expr {
 	return Expr{Type: EXPR_IDENTIFIER, Token: token}
+}
+
+// Lhs is a Token because it needs to point to a storage location
+func NewAssignExpr(left Token, right Expr) Expr {
+	return Expr{Type: EXPR_ASSIGN, Token: left, Children: []Expr{right}}
 }
 
 // TODO: Hard to maintain for new types and only needed for printf debugging. Consider removing.

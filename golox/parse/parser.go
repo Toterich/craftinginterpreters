@@ -12,6 +12,10 @@ type Parser struct {
 	current int
 }
 
+// For grammar rules, see lox_spec/grammar.txt
+// Every rule is implemented in a parse... function below
+
+// program        -> statement* EOF;
 func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	p.tokens = input
 	p.current = 0
@@ -32,9 +36,6 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 
 	return statements, p.errs
 }
-
-// For grammar rules, see lox_spec/grammar.txt
-// Every rule is implemented in a parse... function below
 
 // statement      -> exprStmt | printStmt | varDeclStmt;
 func (p *Parser) parseStatement() (ast.Stmt, error) {
@@ -94,17 +95,17 @@ func (p *Parser) parseExpression() (ast.Expr, error) {
 	return p.parseCommaOp()
 }
 
-// comma_op       -> equality ("," equality)* ;
+// comma_op       -> assignment ("," assignment)* ;
 func (p *Parser) parseCommaOp() (ast.Expr, error) {
-	expr, err := p.parseEquality()
+	expr, err := p.parseAssignment()
 	if err != nil {
-		return ast.Expr{}, err
+		return expr, err
 	}
 
 	for p.match(ast.COMMA) {
 		operator := p.previous()
 
-		right, err := p.parseEquality()
+		right, err := p.parseAssignment()
 		if err != nil {
 			return expr, err
 		}
@@ -114,11 +115,40 @@ func (p *Parser) parseCommaOp() (ast.Expr, error) {
 	return expr, nil
 }
 
+// assignment     -> IDENTIFIER "=" assignment | equality;
+func (p *Parser) parseAssignment() (ast.Expr, error) {
+	// We parse the lhs of the assignment first as a general expression and only check if it is a
+	// valid assignment target further below. This allows parsing complex l-values, e.g.
+	// makeInst().foo.bar = val
+
+	expr, err := p.parseEquality()
+	if err != nil {
+		return expr, err
+	}
+
+	if p.match(ast.EQUAL) {
+		equals := p.previous()
+		right, err := p.parseAssignment()
+		if err != nil {
+			return right, err
+		}
+
+		if expr.Type == ast.EXPR_IDENTIFIER {
+			left := expr.Token
+			return ast.NewAssignExpr(left, right), nil
+		}
+
+		return expr, util.NewRuntimeError(equals, "lhs of assignment is not an identifier.")
+	}
+
+	return expr, err
+}
+
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 func (p *Parser) parseEquality() (ast.Expr, error) {
 	expr, err := p.parseComparison()
 	if err != nil {
-		return ast.Expr{}, err
+		return expr, err
 	}
 
 	for p.match(ast.BANG_EQUAL, ast.EQUAL_EQUAL) {
