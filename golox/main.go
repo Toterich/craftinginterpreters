@@ -12,6 +12,7 @@ import (
 
 var scanner parse.Scanner
 var parser parse.Parser
+var interpreter interp.Interpreter
 
 // Check for error and exit
 // If exitCode is 0, only log error and don't exit
@@ -42,7 +43,7 @@ func run(data string) error {
 	}
 
 	for _, stmt := range stmts {
-		err := interp.Execute(stmt)
+		err := interpreter.Execute(stmt)
 		if err != nil {
 			util.LogErrors(err)
 			return fmt.Errorf("error in Interpreter")
@@ -76,7 +77,12 @@ func main() {
 	if len(args) > 1 {
 		fmt.Println("Usage: golox [script.lox]")
 		os.Exit(64)
-	} else if len(args) == 1 {
+
+	}
+
+	interpreter = interp.NewInterpreter()
+
+	if len(args) == 1 {
 		runFile(args[0])
 	} else {
 		runPrompt()

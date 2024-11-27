@@ -36,19 +36,47 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 // For grammar rules, see lox_spec/grammar.txt
 // Every rule is implemented in a parse... function below
 
-// statement      -> exprStmt | printStmt;
-// printStmt      -> "print" expression ";"
+// statement      -> exprStmt | printStmt | varDeclStmt;
 func (p *Parser) parseStatement() (ast.Stmt, error) {
+	if p.match(ast.VAR) {
+		return p.parseVarDeclStmt()
+	}
 	if p.match(ast.PRINT) {
+		return p.parsePrintStmt()
+	}
+
+	return p.parseExprStmt()
+}
+
+// varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
+func (p *Parser) parseVarDeclStmt() (ast.Stmt, error) {
+	if !p.match(ast.IDENTIFIER) {
+		return ast.NewInvalidStmt(),
+			util.NewSyntaxError(p.peek(), "expected Identifier after 'var'")
+	}
+
+	stmt := ast.NewVarDeclStmt(p.previous().Lexeme)
+
+	if p.match(ast.EQUAL) {
 		expr, err := p.parseExpression()
 		if err != nil {
 			return ast.NewInvalidStmt(), err
 		}
-		_, err = p.consume(ast.SEMICOLON, "expected ; after print expression")
-		return ast.NewPrintStmt(expr), err
+		stmt.Expr = expr
 	}
 
-	return p.parseExprStmt()
+	_, err := p.consume(ast.SEMICOLON, "expected ; after variable declaration")
+	return stmt, err
+}
+
+// printStmt      -> "print" expression ";"
+func (p *Parser) parsePrintStmt() (ast.Stmt, error) {
+	expr, err := p.parseExpression()
+	if err != nil {
+		return ast.NewInvalidStmt(), err
+	}
+	_, err = p.consume(ast.SEMICOLON, "expected ; after print expression")
+	return ast.NewPrintStmt(expr), err
 }
 
 // exprStmt       -> expression ";"

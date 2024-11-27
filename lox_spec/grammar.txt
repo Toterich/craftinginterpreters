@@ -1,7 +1,8 @@
 program        -> statement* EOF;
-statement      -> exprStmt | printStmt;
-exprStmt       -> expression ";"
+statement      -> exprStmt | printStmt | varDeclStmt;
+varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
 printStmt      -> "print" expression ";"
+exprStmt       -> expression ";"
 expression     -> comma_op
 comma_op       -> equality ("," equality)* ;
 equality       -> comparison ( ( "!=" | "==" ) comparison )* ;

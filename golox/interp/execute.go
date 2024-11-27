@@ -5,18 +5,29 @@ import (
 	"toterich/golox/ast"
 )
 
-func Execute(stmt ast.Stmt) error {
-	var err error
+type Interpreter struct {
+	vars map[string]ast.LoxValue
+}
 
+func NewInterpreter() Interpreter {
+	return Interpreter{vars: map[string]ast.LoxValue{}}
+}
+
+func (i *Interpreter) Execute(stmt ast.Stmt) error {
+
+	value, err := Evaluate(stmt.Expr)
+
+	// Execute side effects
 	switch stmt.Type {
 	case ast.ST_EXPR:
-		_, err = Evaluate(stmt.Expr)
+		// Evaluation happened already above
 	case ast.ST_PRINT:
-		var value ast.LoxValue
-		value, err = Evaluate(stmt.Expr)
 		if err == nil {
 			fmt.Println(value)
 		}
+	case ast.ST_VARDECL:
+		i.vars[stmt.Ident] = value
+
 	default:
 		panic("Incomplete Switch")
 	}

@@ -8,7 +8,7 @@ import (
 type ExprType int
 
 const (
-	EXPR_NIL ExprType = iota
+	EXPR_INVALID ExprType = iota
 	EXPR_LITERAL
 	EXPR_UNARY
 	EXPR_BINARY
