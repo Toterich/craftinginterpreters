@@ -8,40 +8,57 @@ import (
 // A recursive-descent parser for transforming a stream of Tokens into an AST
 type Parser struct {
 	tokens  []ast.Token
+	errs    []error
 	current int
 }
 
-func (p *Parser) Parse(input []ast.Token) (ast.Expr, []error) {
+func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	p.tokens = input
 	p.current = 0
+	p.errs = nil
 
-	var errs []error
-	expr, err := p.parseExpression()
-	if err != nil {
-		errs = []error{err}
-	} else {
-		errs = nil
+	var statements []ast.Stmt
+
+	for !p.isAtEnd() {
+		stmt, err := p.parseStatement()
+		// Discard statements with a parse error
+		if err != nil {
+			p.errs = append(p.errs, err)
+		} else {
+			statements = append(statements, stmt)
+		}
 	}
 
-	return expr, errs
+	return statements, p.errs
 }
 
-/*
-Expression grammar rules:
+// For grammar rules, see lox_spec/grammar.txt
+// Every rule is implemented in a parse... function below
 
-expression     -> comma_op
-comma_op       -> equality ("," equality)* ;
-equality       -> comparison ( ( "!=" | "==" ) comparison )* ;
-comparison     -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-term           -> factor ( ( "-" | "+" ) factor )* ;
-factor         -> unary ( ( "/" | "*" ) unary )* ;
-unary          -> ( "!" | "-" ) unary
-               | primary ;
-primary        -> NUMBER | STRING | "true" | "false" | "nil"
-               | "(" expression ")" ;
+// statement      -> exprStmt | printStmt;
+// printStmt      -> "print" expression ";"
+func (p *Parser) parseStatement() (ast.Stmt, error) {
+	if p.match(ast.PRINT) {
+		expr, err := p.parseExpression()
+		if err != nil {
+			return ast.NewInvalidStmt(), err
+		}
+		_, err = p.consume(ast.SEMICOLON, "expected ; after print expression")
+		return ast.NewPrintStmt(expr), err
+	}
 
-Every rule is implemented as a single parser function below
-*/
+	return p.parseExprStmt()
+}
+
+// exprStmt       -> expression ";"
+func (p *Parser) parseExprStmt() (ast.Stmt, error) {
+	expr, err := p.parseExpression()
+	if err != nil {
+		return ast.NewInvalidStmt(), err
+	}
+	_, err = p.consume(ast.SEMICOLON, "expected ; after expression")
+	return ast.NewExprStmt(expr), err
+}
 
 // expression     -> comma_op
 func (p *Parser) parseExpression() (ast.Expr, error) {

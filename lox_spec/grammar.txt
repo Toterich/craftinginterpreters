@@ -1,3 +1,7 @@
+program        -> statement* EOF;
+statement      -> exprStmt | printStmt;
+exprStmt       -> expression ";"
+printStmt      -> "print" expression ";"
 expression     -> comma_op
 comma_op       -> equality ("," equality)* ;
 equality       -> comparison ( ( "!=" | "==" ) comparison )* ;

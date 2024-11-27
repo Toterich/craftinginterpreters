@@ -32,20 +32,20 @@ func run(data string) error {
 		return fmt.Errorf("errors in Scanner")
 	}
 
-	expr, errs := parser.Parse(tokens)
+	stmts, errs := parser.Parse(tokens)
 	//	fmt.Print(expr.PrettyPrint())
 	if errs != nil {
 		util.LogErrors(errs...)
 		return fmt.Errorf("errors in Parser")
 	}
 
-	value, err := interp.Evaluate(expr)
-	if err != nil {
-		util.LogErrors(err)
-		return fmt.Errorf("errors in Interpreter")
+	for _, stmt := range stmts {
+		err := interp.Execute(stmt)
+		if err != nil {
+			util.LogErrors(err)
+			return fmt.Errorf("error in Interpreter")
+		}
 	}
-
-	fmt.Println(value)
 
 	return nil
 }

@@ -1,0 +1,4 @@
+// May print the value of any expression
+print "Hello " + "World";
+print true == false;
+print (15 + 19) * -2;
