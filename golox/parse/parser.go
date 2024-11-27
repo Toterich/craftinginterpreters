@@ -24,6 +24,7 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 		// Discard statements with a parse error
 		if err != nil {
 			p.errs = append(p.errs, err)
+			p.skipToNextStatement()
 		} else {
 			statements = append(statements, stmt)
 		}
@@ -249,6 +250,10 @@ func (p Parser) isAtEnd() bool {
 // Skips all tokens until the beginning of the next statement. This is required e.g. after a parsing error,
 // where we discard the rest of the current statement.
 func (p *Parser) skipToNextStatement() {
+	if p.isAtEnd() {
+		return
+	}
+
 	p.current += 1
 
 	for !p.isAtEnd() {

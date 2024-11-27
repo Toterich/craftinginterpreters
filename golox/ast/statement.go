@@ -24,3 +24,16 @@ func NewExprStmt(expr Expr) Stmt {
 func NewPrintStmt(expr Expr) Stmt {
 	return Stmt{Type: ST_PRINT, Expr: expr}
 }
+
+func (stmt Stmt) PrettyPrint() string {
+	switch stmt.Type {
+	case ST_INVALID:
+		return "INVALID;"
+	case ST_EXPR:
+		return stmt.Expr.PrettyPrint() + ";"
+	case ST_PRINT:
+		return "Print: " + stmt.Expr.PrettyPrint() + ";"
+	}
+
+	panic("Incomplete switch")
+}

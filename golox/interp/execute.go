@@ -14,7 +14,9 @@ func Execute(stmt ast.Stmt) error {
 	case ast.ST_PRINT:
 		var value ast.LoxValue
 		value, err = Evaluate(stmt.Expr)
-		fmt.Println(value)
+		if err == nil {
+			fmt.Println(value)
+		}
 	default:
 		panic("Incomplete Switch")
 	}
