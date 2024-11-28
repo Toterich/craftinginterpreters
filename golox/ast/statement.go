@@ -7,12 +7,14 @@ const (
 	ST_EXPR
 	ST_PRINT
 	ST_VARDECL
+	ST_BLOCK
 )
 
 type Stmt struct {
-	Type  StmtType
-	Expr  Expr
-	Ident string
+	Type     StmtType
+	Expr     Expr
+	Ident    string // For VarDecl Statement
+	Children []Stmt // For Block Statement
 }
 
 func NewInvalidStmt() Stmt {
@@ -34,19 +36,6 @@ func NewVarDeclStmt(ident string) Stmt {
 	return Stmt{Type: ST_VARDECL, Ident: ident, Expr: NewLiteralExpr(Token{Type: NIL, Line: -1})}
 }
 
-// TODO: Hard to maintain with new types and only needed for printf debugging,
-// consider removing this
-func (stmt Stmt) PrettyPrint() string {
-	switch stmt.Type {
-	case ST_INVALID:
-		return "INVALID;"
-	case ST_EXPR:
-		return stmt.Expr.PrettyPrint() + ";"
-	case ST_PRINT:
-		return "Print: " + stmt.Expr.PrettyPrint() + ";"
-	case ST_VARDECL:
-		return "var " + stmt.Ident + ";"
-	}
-
-	panic("Incomplete switch")
+func NewBlockStatement(children []Stmt) Stmt {
+	return Stmt{Type: ST_BLOCK, Children: children}
 }

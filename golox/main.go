@@ -34,9 +34,6 @@ func run(data string) error {
 	}
 
 	stmts, errs := parser.Parse(tokens)
-	// for _, stmt := range stmts {
-	// 	stmt.PrettyPrint()
-	// }
 	if errs != nil {
 		util.LogErrors(errs...)
 		return fmt.Errorf("errors in Parser")

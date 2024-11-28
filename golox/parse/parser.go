@@ -37,8 +37,11 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
-// statement      -> exprStmt | printStmt | varDeclStmt;
+// statement      -> exprStmt | printStmt | varDeclStmt | blockStmt;
 func (p *Parser) parseStatement() (ast.Stmt, error) {
+	if p.match(ast.LEFT_BRACE) {
+		return p.parseBlockStmt()
+	}
 	if p.match(ast.VAR) {
 		return p.parseVarDeclStmt()
 	}
@@ -47,6 +50,30 @@ func (p *Parser) parseStatement() (ast.Stmt, error) {
 	}
 
 	return p.parseExprStmt()
+}
+
+// blockStmt      -> "{" statement* "}";
+func (p *Parser) parseBlockStmt() (ast.Stmt, error) {
+	children := make([]ast.Stmt, 0)
+	var err error = nil
+
+	for !p.isAtEnd() {
+		var stmt ast.Stmt
+		stmt, err = p.parseStatement()
+		if err != nil {
+			// We continue parsing until the end of the block so the parser doesn't trip up.
+			// TODO: We currently only report the last occurred error in a statement block. Would be good
+			// to report all of them, by returning a struct that satisfies error and contains all individual errors
+			p.skipToNextStatement()
+			continue
+		}
+		children = append(children, stmt)
+		if p.match(ast.RIGHT_BRACE) {
+			return ast.NewBlockStatement(children), err
+		}
+	}
+
+	return ast.NewInvalidStmt(), util.NewSyntaxError(p.peek(), "missing closing '}'.")
 }
 
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";

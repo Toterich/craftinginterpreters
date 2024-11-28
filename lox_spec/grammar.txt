@@ -1,5 +1,6 @@
 program        -> statement* EOF;
-statement      -> exprStmt | printStmt | varDeclStmt;
+statement      -> exprStmt | printStmt | varDeclStmt | blockStmt;
+blockStmt      -> "{" statement* "}";
 varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
 printStmt      -> "print" expression ";"
 exprStmt       -> expression ";"
