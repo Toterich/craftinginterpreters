@@ -24,10 +24,10 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	var statements []ast.Stmt
 
 	for !p.isAtEnd() {
-		stmt, err := p.parseStatement()
+		stmt, errs := p.parseStatement()
 		// Discard statements with a parse error
-		if err != nil {
-			p.errs = append(p.errs, err)
+		if errs != nil {
+			p.errs = append(p.errs, errs...)
 			p.skipToNextStatement()
 		} else {
 			statements = append(statements, stmt)
@@ -38,42 +38,73 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 }
 
 // statement      -> exprStmt | printStmt | varDeclStmt | blockStmt;
-func (p *Parser) parseStatement() (ast.Stmt, error) {
+func (p *Parser) parseStatement() (ast.Stmt, []error) {
 	if p.match(ast.LEFT_BRACE) {
 		return p.parseBlockStmt()
 	}
+
+	// The following statements can only produce a single error each, which
+	// is packed inside a single-element array
+
 	if p.match(ast.VAR) {
-		return p.parseVarDeclStmt()
+		stmt, err := p.parseVarDeclStmt()
+		// This check is necessary to avoid creating an empty (not-nil) slice of a
+		// nil error
+		if err != nil {
+			return stmt, []error{err}
+		} else {
+			return stmt, nil
+		}
 	}
 	if p.match(ast.PRINT) {
-		return p.parsePrintStmt()
+		stmt, err := p.parsePrintStmt()
+		if err != nil {
+			return stmt, []error{err}
+		} else {
+			return stmt, nil
+		}
 	}
 
-	return p.parseExprStmt()
+	stmt, err := p.parseExprStmt()
+	if err != nil {
+		return stmt, []error{err}
+	} else {
+		return stmt, nil
+	}
 }
 
 // blockStmt      -> "{" statement* "}";
-func (p *Parser) parseBlockStmt() (ast.Stmt, error) {
+// parseBlockStmt() can return multiple errors because each nested statement can
+// produce an error
+func (p *Parser) parseBlockStmt() (ast.Stmt, []error) {
 	children := make([]ast.Stmt, 0)
-	var err error = nil
+	var errs []error = nil
+
+	// Empty blocks are allowed
+	if p.match(ast.RIGHT_BRACE) {
+		return ast.NewBlockStmt(children), errs
+	}
 
 	for !p.isAtEnd() {
-		var stmt ast.Stmt
-		stmt, err = p.parseStatement()
+		stmt, err := p.parseStatement()
 		if err != nil {
+			errs = append(errs, err...)
 			// We continue parsing until the end of the block so the parser doesn't trip up.
-			// TODO: We currently only report the last occurred error in a statement block. Would be good
-			// to report all of them, by returning a struct that satisfies error and contains all individual errors
 			p.skipToNextStatement()
+			// Check if we skipped over the end of the block
+			if p.previous().Type == ast.RIGHT_BRACE {
+				return ast.NewBlockStmt(children), errs
+			}
 			continue
 		}
 		children = append(children, stmt)
 		if p.match(ast.RIGHT_BRACE) {
-			return ast.NewBlockStatement(children), err
+			return ast.NewBlockStmt(children), errs
 		}
 	}
 
-	return ast.NewInvalidStmt(), util.NewSyntaxError(p.peek(), "missing closing '}'.")
+	errs = append(errs, util.NewSyntaxError(p.peek(), "missing closing '}'."))
+	return ast.NewBlockStmt(children), errs
 }
 
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
@@ -344,8 +375,11 @@ func (p *Parser) skipToNextStatement() {
 	p.current += 1
 
 	for !p.isAtEnd() {
-		// Statement ends after semicolon
-		if p.previous().Type == ast.SEMICOLON {
+		// Statement ends after semicolon or }
+		switch p.previous().Type {
+		case ast.SEMICOLON:
+			fallthrough
+		case ast.RIGHT_BRACE:
 			return
 		}
 
@@ -366,6 +400,8 @@ func (p *Parser) skipToNextStatement() {
 		case ast.PRINT:
 			fallthrough
 		case ast.RETURN:
+			fallthrough
+		case ast.LEFT_BRACE:
 			return
 		}
 

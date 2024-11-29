@@ -36,6 +36,6 @@ func NewVarDeclStmt(ident string) Stmt {
 	return Stmt{Type: ST_VARDECL, Ident: ident, Expr: NewLiteralExpr(Token{Type: NIL, Line: -1})}
 }
 
-func NewBlockStatement(children []Stmt) Stmt {
+func NewBlockStmt(children []Stmt) Stmt {
 	return Stmt{Type: ST_BLOCK, Children: children}
 }
