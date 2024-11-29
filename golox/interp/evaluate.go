@@ -11,7 +11,7 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 	case ast.EXPR_LITERAL:
 		return expr.Token.Literal, nil
 	case ast.EXPR_IDENTIFIER:
-		val, ok := i.vars[expr.Token.Lexeme]
+		val, ok := i.env.getVar(expr.Token.Lexeme)
 		if !ok {
 			return val, util.NewRuntimeError(expr.Token, "undeclared identifier.")
 		}
@@ -26,7 +26,7 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 		return i.evalAssignment(expr)
 	}
 
-	panic(fmt.Sprintf("Unhandled expression type %d in Evaluate", expr.Type))
+	panic("Incomplete Switch")
 }
 
 func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
@@ -129,7 +129,7 @@ func (i Interpreter) evalGrouping(expr ast.Expr) (ast.LoxValue, error) {
 }
 
 func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
-	_, ok := i.vars[expr.Token.Lexeme]
+	_, ok := i.env.getVar(expr.Token.Lexeme)
 	if !ok {
 		return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "left hand side of assignment has not been declared")
 	}
@@ -139,7 +139,7 @@ func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
 		return val, err
 	}
 
-	i.vars[expr.Token.Lexeme] = val
+	i.env.setVar(expr.Token.Lexeme, val)
 	return val, nil
 }
 

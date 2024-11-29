@@ -6,11 +6,11 @@ import (
 )
 
 type Interpreter struct {
-	vars map[string]ast.LoxValue
+	env environment
 }
 
 func NewInterpreter() Interpreter {
-	return Interpreter{vars: map[string]ast.LoxValue{}}
+	return Interpreter{env: newEnvironment()}
 }
 
 func (i *Interpreter) Execute(stmt ast.Stmt) error {
@@ -26,7 +26,15 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 			fmt.Println(value)
 		}
 	case ast.ST_VARDECL:
-		i.vars[stmt.Ident] = value
+		i.env.setVar(stmt.Ident, value)
+	case ast.ST_BLOCK:
+		i.env.push()
+
+		for _, child := range stmt.Children {
+			i.Execute(child)
+		}
+
+		i.env.pop()
 
 	default:
 		panic("Incomplete Switch")
