@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"toterich/golox/ast"
 	"toterich/golox/util"
+	"toterich/golox/util/assert"
 )
 
 func isDigit(c byte) bool {
@@ -202,7 +203,7 @@ func (s *Scanner) matchNumber() {
 	// Store actual numberic value with ast.Token
 	num, err := strconv.ParseFloat(t.Lexeme, 64)
 	// If this triggers, the number parsing above has a bug
-	util.AssertNoError(err)
+	assert.AssertNoError(err)
 
 	t.Literal = ast.NewNumberValue(num)
 

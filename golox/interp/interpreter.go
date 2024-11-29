@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 	"toterich/golox/ast"
+	"toterich/golox/util/assert"
 )
 
 type Interpreter struct {
@@ -37,7 +38,7 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 		i.env.pop()
 
 	default:
-		panic("Incomplete Switch")
+		panic(assert.MissingCase(stmt.Type))
 	}
 
 	return err

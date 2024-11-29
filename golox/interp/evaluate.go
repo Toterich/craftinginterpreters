@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"toterich/golox/ast"
 	"toterich/golox/util"
+	"toterich/golox/util/assert"
 )
 
 func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
@@ -26,7 +27,7 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 		return i.evalAssignment(expr)
 	}
 
-	panic("Incomplete Switch")
+	panic(assert.MissingCase(expr.Type))
 }
 
 func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
@@ -46,7 +47,7 @@ func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 		return ast.NewBoolValue(isTruthy(right)), nil
 	}
 
-	panic(fmt.Sprintf("Unhandled operator %d in Unary Expression", expr.Token.Type))
+	panic(assert.MissingCase(expr.Token.Type))
 }
 
 func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
@@ -121,7 +122,7 @@ func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 		return ast.NewBoolValue(isEqual(left, right)), nil
 	}
 
-	panic(fmt.Sprintf("Unhandled operator %d in Binary Expression", expr.Token.Type))
+	panic(assert.MissingCase(expr.Token.Type))
 }
 
 func (i Interpreter) evalGrouping(expr ast.Expr) (ast.LoxValue, error) {
@@ -167,7 +168,7 @@ func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error 
 }
 
 func checkTypes(token ast.Token, expected []ast.LoxType, actual []ast.LoxType) error {
-	util.Assert(len(expected) == len(actual), "expected and actual need to be of equal length")
+	assert.Assert(len(expected) == len(actual), "expected and actual need to be of equal length")
 
 	equal := true
 	for i := 0; i < len(expected); i += 1 {

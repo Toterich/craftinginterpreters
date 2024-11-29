@@ -3,6 +3,7 @@ package parse
 import (
 	"toterich/golox/ast"
 	"toterich/golox/util"
+	"toterich/golox/util/assert"
 )
 
 // A recursive-descent parser for transforming a stream of Tokens into an AST
@@ -356,7 +357,7 @@ func (p Parser) peek() ast.Token {
 
 // Returns the previously consumed ast.Token
 func (p Parser) previous() ast.Token {
-	util.Assert(p.current > 0, "This may only be called when p.current > 0")
+	assert.Assert(p.current > 0, "This may only be called when p.current > 0")
 	return p.tokens[p.current-1]
 }
 

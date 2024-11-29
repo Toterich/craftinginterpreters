@@ -1,6 +1,9 @@
 package ast
 
-import "strconv"
+import (
+	"strconv"
+	"toterich/golox/util/assert"
+)
 
 type LoxType int
 
@@ -23,7 +26,7 @@ func (t LoxType) String() string {
 	case LT_BOOL:
 		return "Bool"
 	default:
-		panic("Incomplete Switch")
+		panic(assert.MissingCase(t))
 	}
 }
 
@@ -74,6 +77,6 @@ func (v LoxValue) String() string {
 	case LT_STRING:
 		return v.AsString()
 	default:
-		panic("Incomplete Switch")
+		panic(assert.MissingCase(v.Type))
 	}
 }
