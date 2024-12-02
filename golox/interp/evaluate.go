@@ -144,7 +144,9 @@ func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
 		return val, err
 	}
 
-	i.env.setVar(expr.Token.Lexeme, val)
+	// This is already checked by getVar above
+	assert.Assert(i.env.assignVal(expr.Token.Lexeme, val), "identifier to be assigned to has not been declared")
+
 	return val, nil
 }
 

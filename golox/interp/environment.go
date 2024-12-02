@@ -1,6 +1,8 @@
 package interp
 
-import "toterich/golox/ast"
+import (
+	"toterich/golox/ast"
+)
 
 // Contains the current state of the interpreter.
 // environment provides a stack-like interface to push and pop sub-envs, which are used
@@ -15,7 +17,7 @@ type environment struct {
 
 func newEnvironment() environment {
 	// We always have at least the global scope
-	return environment{scopes: []map[string]ast.LoxValue{}}
+	return environment{scopes: []map[string]ast.LoxValue{{}}}
 }
 
 // Query the value of an identifier, starting with the current scope and moving up the stack.
@@ -32,9 +34,24 @@ func (env environment) getVar(ident string) (ast.LoxValue, bool) {
 	return ast.NewNilValue(), false
 }
 
-// Set the value of an identifier in the current scope.
-func (env *environment) setVar(ident string, value ast.LoxValue) {
+// Declare the given identifier in the current scope.
+func (env *environment) declareVal(ident string, value ast.LoxValue) {
 	env.scopes[len(env.scopes)-1][ident] = value
+}
+
+// Set the value of an existing identifier, either in the current scope or in the nearest parent.
+// Returns true if the identifier has been previously declared in any scope, false otherwise
+func (env *environment) assignVal(ident string, value ast.LoxValue) bool {
+	// Iterate backwards through the scopes so the most deeply nested ones are queried first
+	for i := len(env.scopes) - 1; i >= 0; i -= 1 {
+		_, ok := env.scopes[i][ident]
+		if ok {
+			env.scopes[i][ident] = value
+			return true
+		}
+	}
+
+	return false
 }
 
 // Push a new scope

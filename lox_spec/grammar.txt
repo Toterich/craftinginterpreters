@@ -1,13 +1,14 @@
 program        -> statement* EOF;
-statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | blockStmt ;
+statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | blockStmt ;
+exprStmt       -> expression ";" ;
 ifStmt         -> "if" "(" expression ")" statement ("else" statement)? ;
-blockStmt      -> "{" statement* "}";
-varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
-printStmt      -> "print" expression ";"
-exprStmt       -> expression ";"
-expression     -> comma_op
+printStmt      -> "print" expression ";" ;
+varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";" ;
+whileStmt      -> "while" "(" expression ")" statement ;
+blockStmt      -> "{" statement* "}" ;
+expression     -> comma_op ;
 comma_op       -> assignment ("," assignment)* ;
-assignment     -> IDENTIFIER "=" assignment | logic_or;
+assignment     -> IDENTIFIER "=" assignment | logic_or ;
 logic_or       -> logic_and ("or" logic_and)* ;
 logic_and      -> equality ("and" equality)* ;
 equality       -> comparison ( ( "!=" | "==" ) comparison )* ;

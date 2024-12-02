@@ -33,7 +33,7 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 	case ast.ST_VARDECL:
 		exprValue, err = i.Evaluate(stmt.Expr)
 		if err == nil {
-			i.env.setVar(stmt.Ident, exprValue)
+			i.env.declareVal(stmt.Ident, exprValue)
 		}
 
 	case ast.ST_BLOCK:
@@ -54,6 +54,19 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 			err = i.Execute(stmt.Children[0])
 		} else if stmt.Children[1].Type != ast.ST_INVALID {
 			err = i.Execute(stmt.Children[1])
+		}
+
+	case ast.ST_WHILE:
+		exprValue, err = i.Evaluate(stmt.Expr)
+		for exprValue.IsTruthy() {
+			err = i.Execute(stmt.Children[0])
+			if err != nil {
+				break
+			}
+			exprValue, err = i.Evaluate(stmt.Expr)
+			if err != nil {
+				break
+			}
 		}
 
 	default:

@@ -38,7 +38,7 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
-// statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | blockStmt ;
+// statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | blockStmt ;
 func (p *Parser) parseStatement() (ast.Stmt, []error) {
 	if p.match(ast.LEFT_BRACE) {
 		return p.parseBlockStmt()
@@ -46,6 +46,9 @@ func (p *Parser) parseStatement() (ast.Stmt, []error) {
 
 	if p.match(ast.IF) {
 		return p.parseIfStmt()
+	}
+	if p.match(ast.WHILE) {
+		return p.parseWhileStmt()
 	}
 	// The following statements can only produce a single error each, which
 	// is packed inside a single-element array
@@ -143,6 +146,31 @@ func (p *Parser) parseIfStmt() (ast.Stmt, []error) {
 	}
 
 	return ast.NewIfStmt(condition, ifStmt, elseStmt), nil
+}
+
+// whileStmt      -> "while" "(" expression ")" statement ;
+func (p *Parser) parseWhileStmt() (ast.Stmt, []error) {
+	if !p.match(ast.LEFT_PAREN) {
+		return ast.NewInvalidStmt(),
+			[]error{util.NewSyntaxError(p.peek(), "expected condition after 'while'.")}
+	}
+
+	condition, err := p.parseExpression()
+	if err != nil {
+		return ast.NewInvalidStmt(), []error{util.NewSyntaxError(p.peek(), "'while' condition must be a valid expression.")}
+	}
+
+	if !p.match(ast.RIGHT_PAREN) {
+		return ast.NewInvalidStmt(),
+			[]error{util.NewSyntaxError(p.peek(), "missing closing ')' after 'while' condition.")}
+	}
+
+	loopStmt, errs := p.parseStatement()
+	if errs != nil {
+		return loopStmt, errs
+	}
+
+	return ast.NewWhileStmt(condition, loopStmt), nil
 }
 
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";

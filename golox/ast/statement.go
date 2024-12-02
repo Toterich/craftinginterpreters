@@ -9,6 +9,8 @@ const (
 	ST_VARDECL
 	ST_BLOCK
 	ST_IF
+	ST_WHILE
+	ST_FOR
 )
 
 type Stmt struct {
@@ -43,4 +45,8 @@ func NewBlockStmt(children []Stmt) Stmt {
 
 func NewIfStmt(condition Expr, ifBranch Stmt, elseBranch Stmt) Stmt {
 	return Stmt{Type: ST_IF, Expr: condition, Children: []Stmt{ifBranch, elseBranch}}
+}
+
+func NewWhileStmt(condition Expr, loop Stmt) Stmt {
+	return Stmt{Type: ST_WHILE, Expr: condition, Children: []Stmt{loop}}
 }
