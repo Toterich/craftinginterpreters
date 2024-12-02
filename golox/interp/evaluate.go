@@ -25,6 +25,10 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 		return i.evalGrouping(expr)
 	case ast.EXPR_ASSIGN:
 		return i.evalAssignment(expr)
+	case ast.EXPR_OR:
+		return i.evalOr(expr)
+	case ast.EXPR_AND:
+		return i.evalAnd(expr)
 	}
 
 	panic(assert.MissingCase(expr.Type))
@@ -142,6 +146,36 @@ func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
 
 	i.env.setVar(expr.Token.Lexeme, val)
 	return val, nil
+}
+
+func (i Interpreter) evalOr(expr ast.Expr) (ast.LoxValue, error) {
+	leftVal, err := i.Evaluate(expr.Children[0])
+	if err != nil {
+		return leftVal, err
+	}
+
+	// Short circuit
+	if leftVal.IsTruthy() {
+		return ast.NewBoolValue(true), nil
+	}
+
+	rightVal, err := i.Evaluate(expr.Children[1])
+	return ast.NewBoolValue(rightVal.IsTruthy()), err
+}
+
+func (i Interpreter) evalAnd(expr ast.Expr) (ast.LoxValue, error) {
+	leftVal, err := i.Evaluate(expr.Children[0])
+	if err != nil {
+		return leftVal, err
+	}
+
+	// Short circuit
+	if !leftVal.IsTruthy() {
+		return ast.NewBoolValue(false), nil
+	}
+
+	rightVal, err := i.Evaluate(expr.Children[1])
+	return ast.NewBoolValue(rightVal.IsTruthy()), err
 }
 
 func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error {

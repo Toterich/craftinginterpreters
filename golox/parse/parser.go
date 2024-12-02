@@ -211,13 +211,13 @@ func (p *Parser) parseCommaOp() (ast.Expr, error) {
 	return expr, nil
 }
 
-// assignment     -> IDENTIFIER "=" assignment | equality;
+// assignment     -> IDENTIFIER "=" assignment | logic_or;
 func (p *Parser) parseAssignment() (ast.Expr, error) {
 	// We parse the lhs of the assignment first as a general expression and only check if it is a
 	// valid assignment target further below. This allows parsing complex l-values, e.g.
 	// makeInst().foo.bar = val
 
-	expr, err := p.parseEquality()
+	expr, err := p.parseLogicOr()
 	if err != nil {
 		return expr, err
 	}
@@ -238,6 +238,44 @@ func (p *Parser) parseAssignment() (ast.Expr, error) {
 	}
 
 	return expr, err
+}
+
+// logic_or       -> logic_and ("or" logic_and)* ;
+func (p *Parser) parseLogicOr() (ast.Expr, error) {
+	expr, err := p.parseLogicAnd()
+	if err != nil {
+		return expr, err
+	}
+
+	for p.match(ast.OR) {
+		right, err := p.parseLogicAnd()
+		if err != nil {
+			return right, err
+		}
+
+		expr = ast.NewOrExpr(expr, right)
+	}
+
+	return expr, nil
+}
+
+// logic_and      -> equality ("and" equality)* ;
+func (p *Parser) parseLogicAnd() (ast.Expr, error) {
+	expr, err := p.parseEquality()
+	if err != nil {
+		return expr, err
+	}
+
+	for p.match(ast.AND) {
+		right, err := p.parseEquality()
+		if err != nil {
+			return right, err
+		}
+
+		expr = ast.NewAndExpr(expr, right)
+	}
+
+	return expr, nil
 }
 
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
