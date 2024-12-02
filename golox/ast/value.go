@@ -53,6 +53,25 @@ func NewBoolValue(val bool) LoxValue {
 	return LoxValue{Type: LT_BOOL, Value: val}
 }
 
+func (v LoxValue) IsTruthy() bool {
+	switch v.Type {
+	case LT_NIL:
+		return false
+	case LT_BOOL:
+		return v.AsBool()
+	}
+
+	return true
+}
+
+func (v LoxValue) IsEqual(other LoxValue) bool {
+	if v.Type == LT_NIL && other.Type == LT_NIL {
+		return true
+	}
+
+	return v == other
+}
+
 func (v LoxValue) AsString() string {
 	return v.Value.(string)
 }

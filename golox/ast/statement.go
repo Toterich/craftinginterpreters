@@ -8,6 +8,7 @@ const (
 	ST_PRINT
 	ST_VARDECL
 	ST_BLOCK
+	ST_IF
 )
 
 type Stmt struct {
@@ -38,4 +39,8 @@ func NewVarDeclStmt(ident string) Stmt {
 
 func NewBlockStmt(children []Stmt) Stmt {
 	return Stmt{Type: ST_BLOCK, Children: children}
+}
+
+func NewIfStmt(condition Expr, ifBranch Stmt, elseBranch Stmt) Stmt {
+	return Stmt{Type: ST_IF, Expr: condition, Children: []Stmt{ifBranch, elseBranch}}
 }

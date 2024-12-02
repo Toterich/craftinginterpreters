@@ -44,7 +44,7 @@ func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 		}
 		return ast.NewNumberValue(-right.AsNumber()), nil
 	case ast.BANG:
-		return ast.NewBoolValue(isTruthy(right)), nil
+		return ast.NewBoolValue(right.IsTruthy()), nil
 	}
 
 	panic(assert.MissingCase(expr.Token.Type))
@@ -117,9 +117,9 @@ func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 		}
 		return ast.NewBoolValue(left.AsNumber() <= right.AsNumber()), nil
 	case ast.BANG_EQUAL:
-		return ast.NewBoolValue(!isEqual(left, right)), nil
+		return ast.NewBoolValue(!left.IsEqual(right)), nil
 	case ast.EQUAL_EQUAL:
-		return ast.NewBoolValue(isEqual(left, right)), nil
+		return ast.NewBoolValue(left.IsEqual(right)), nil
 	}
 
 	panic(assert.MissingCase(expr.Token.Type))
@@ -142,25 +142,6 @@ func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
 
 	i.env.setVar(expr.Token.Lexeme, val)
 	return val, nil
-}
-
-func isTruthy(value ast.LoxValue) bool {
-	switch value.Type {
-	case ast.LT_NIL:
-		return false
-	case ast.LT_BOOL:
-		return value.AsBool()
-	}
-
-	return true
-}
-
-func isEqual(left ast.LoxValue, right ast.LoxValue) bool {
-	if left.Type == ast.LT_NIL && right.Type == ast.LT_NIL {
-		return true
-	}
-
-	return left == right
 }
 
 func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error {

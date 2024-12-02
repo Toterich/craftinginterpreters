@@ -38,12 +38,15 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
-// statement      -> exprStmt | printStmt | varDeclStmt | blockStmt;
+// statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | blockStmt ;
 func (p *Parser) parseStatement() (ast.Stmt, []error) {
 	if p.match(ast.LEFT_BRACE) {
 		return p.parseBlockStmt()
 	}
 
+	if p.match(ast.IF) {
+		return p.parseIfStmt()
+	}
 	// The following statements can only produce a single error each, which
 	// is packed inside a single-element array
 
@@ -108,11 +111,45 @@ func (p *Parser) parseBlockStmt() (ast.Stmt, []error) {
 	return ast.NewBlockStmt(children), errs
 }
 
+// ifStmt         -> "if" "(" expression ")" statement ("else" statement)? ;
+func (p *Parser) parseIfStmt() (ast.Stmt, []error) {
+	if !p.match(ast.LEFT_PAREN) {
+		return ast.NewInvalidStmt(),
+			[]error{util.NewSyntaxError(p.peek(), "expected condition after 'if'.")}
+	}
+
+	condition, err := p.parseExpression()
+	if err != nil {
+		return ast.NewInvalidStmt(), []error{util.NewSyntaxError(p.peek(), "'if' condition must be a valid expression.")}
+	}
+
+	if !p.match(ast.RIGHT_PAREN) {
+		return ast.NewInvalidStmt(),
+			[]error{util.NewSyntaxError(p.peek(), "missing closing ')' after 'if' condition.")}
+	}
+
+	ifStmt, errs := p.parseStatement()
+	if errs != nil {
+		return ifStmt, errs
+	}
+
+	elseStmt := ast.NewInvalidStmt()
+
+	if p.match(ast.ELSE) {
+		elseStmt, errs = p.parseStatement()
+		if errs != nil {
+			return elseStmt, errs
+		}
+	}
+
+	return ast.NewIfStmt(condition, ifStmt, elseStmt), nil
+}
+
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
 func (p *Parser) parseVarDeclStmt() (ast.Stmt, error) {
 	if !p.match(ast.IDENTIFIER) {
 		return ast.NewInvalidStmt(),
-			util.NewSyntaxError(p.peek(), "expected Identifier after 'var'")
+			util.NewSyntaxError(p.peek(), "expected Identifier after 'var'.")
 	}
 
 	stmt := ast.NewVarDeclStmt(p.previous().Lexeme)
@@ -125,7 +162,7 @@ func (p *Parser) parseVarDeclStmt() (ast.Stmt, error) {
 		stmt.Expr = expr
 	}
 
-	_, err := p.consume(ast.SEMICOLON, "expected ; after variable declaration")
+	_, err := p.consume(ast.SEMICOLON, "expected ; after variable declaration.")
 	return stmt, err
 }
 
@@ -135,7 +172,7 @@ func (p *Parser) parsePrintStmt() (ast.Stmt, error) {
 	if err != nil {
 		return ast.NewInvalidStmt(), err
 	}
-	_, err = p.consume(ast.SEMICOLON, "expected ; after print expression")
+	_, err = p.consume(ast.SEMICOLON, "expected ; after print statement.")
 	return ast.NewPrintStmt(expr), err
 }
 
@@ -145,7 +182,7 @@ func (p *Parser) parseExprStmt() (ast.Stmt, error) {
 	if err != nil {
 		return ast.NewInvalidStmt(), err
 	}
-	_, err = p.consume(ast.SEMICOLON, "expected ; after expression")
+	_, err = p.consume(ast.SEMICOLON, "expected ; after expression.")
 	return ast.NewExprStmt(expr), err
 }
 
