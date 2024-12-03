@@ -12,6 +12,7 @@ const (
 	EXPR_ASSIGN
 	EXPR_OR
 	EXPR_AND
+	EXPR_CALL
 )
 
 type Expr struct {
@@ -52,4 +53,9 @@ func NewOrExpr(left Expr, right Expr) Expr {
 
 func NewAndExpr(left Expr, right Expr) Expr {
 	return Expr{Type: EXPR_AND, Children: []Expr{left, right}}
+}
+
+// In a Call Expr, the first child is the callee and the remaining ones the arguments
+func NewCallExpr(callee Expr, location Token, arguments []Expr) Expr {
+	return Expr{Type: EXPR_CALL, Token: location, Children: append([]Expr{callee}, arguments...)}
 }

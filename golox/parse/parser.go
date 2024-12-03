@@ -478,18 +478,65 @@ func (p *Parser) parseFactor() (ast.Expr, error) {
 	return expr, nil
 }
 
-// unary          → ( "!" | "-" ) parseUnary | primary ;
+// unary          -> ( "!" | "-" ) unary | call ;
 func (p *Parser) parseUnary() (ast.Expr, error) {
 	if p.match(ast.BANG, ast.MINUS) {
 		operator := p.previous()
 		child, err := p.parseUnary()
 		if err != nil {
-			return ast.Expr{}, err
+			return child, err
 		}
 		return ast.NewUnaryExpr(child, operator), nil
 	}
 
-	return p.parsePrimary()
+	return p.parseCall()
+}
+
+// call           -> primary ( "(" arguments? ")" )* ;
+// arguments      -> expression ( ", " expression )* ;
+func (p *Parser) parseCall() (ast.Expr, error) {
+	expr, err := p.parsePrimary()
+	if err != nil {
+		return expr, err
+	}
+
+	for p.match(ast.LEFT_PAREN) {
+		args := make([]ast.Expr, 0)
+
+		// empty argument list
+		if p.match(ast.RIGHT_PAREN) {
+			expr = ast.NewCallExpr(expr, p.previous(), args)
+			continue
+		}
+
+		// first argument
+		arg, err := p.parseExpression()
+		if err != nil {
+			return expr, err
+		}
+		args = append(args, arg)
+
+		// additional arguments
+		for p.match(ast.COMMA) {
+			if len(args) >= 255 {
+				return expr, util.NewSyntaxError(p.peek(), "can't have more than 255 arguments.")
+			}
+			arg, err := p.parseExpression()
+			if err != nil {
+				return expr, err
+			}
+			args = append(args, arg)
+		}
+
+		close, err := p.consume(ast.RIGHT_PAREN, "expected ')' after argument list.")
+		if err != nil {
+			return expr, err
+		}
+
+		expr = ast.NewCallExpr(expr, close, args)
+	}
+
+	return expr, nil
 }
 
 // primary        → NUMBER | STRING | IDENTIFIER | "true" | "false" | "nil" | "(" expression ")" ;

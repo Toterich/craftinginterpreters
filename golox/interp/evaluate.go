@@ -29,6 +29,8 @@ func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
 		return i.evalOr(expr)
 	case ast.EXPR_AND:
 		return i.evalAnd(expr)
+	case ast.EXPR_CALL:
+		return i.evalCall(expr)
 	}
 
 	panic(assert.MissingCase(expr.Type))
@@ -178,6 +180,23 @@ func (i Interpreter) evalAnd(expr ast.Expr) (ast.LoxValue, error) {
 
 	rightVal, err := i.Evaluate(expr.Children[1])
 	return ast.NewBoolValue(rightVal.IsTruthy()), err
+}
+
+func (i Interpreter) evalCall(expr ast.Expr) (ast.LoxValue, error) {
+	callee, err := i.Evaluate(expr.Children[0])
+	if err != nil {
+		return callee, err
+	}
+
+	args := make([]ast.LoxValue, 0)
+	for idx := 1; idx < len(expr.Children); idx += 1 {
+		arg, err := i.Evaluate(expr.Children[idx])
+		if err != nil {
+			return arg, err
+		}
+		args = append(args, arg)
+	}
+
 }
 
 func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error {
