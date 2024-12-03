@@ -8,9 +8,10 @@ import (
 
 // A recursive-descent parser for transforming a stream of Tokens into an AST
 type Parser struct {
-	tokens  []ast.Token
-	errs    []error
-	current int
+	tokens    []ast.Token
+	errs      []error
+	current   int
+	loopLevel int
 }
 
 // For grammar rules, see lox_spec/grammar.txt
@@ -21,6 +22,7 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	p.tokens = input
 	p.current = 0
 	p.errs = nil
+	p.loopLevel = 0
 
 	var statements []ast.Stmt
 
@@ -38,7 +40,8 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
-// statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | forStmt | blockStmt ;
+// statement
+// -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | forStmt | breakStmt | blockStmt ;
 func (p *Parser) parseStatement() (ast.Stmt, []error) {
 	if p.match(ast.LEFT_BRACE) {
 		return p.parseBlockStmt()
@@ -62,6 +65,13 @@ func (p *Parser) parseStatement() (ast.Stmt, []error) {
 		stmt, err = p.parseVarDeclStmt()
 	} else if p.match(ast.PRINT) {
 		stmt, err = p.parsePrintStmt()
+	} else if p.match(ast.BREAK) {
+		if p.loopLevel < 1 {
+			err = util.NewSyntaxError(p.previous(), "break statement outside of loop.")
+		} else {
+			stmt = ast.NewBreakStmt()
+			_, err = p.consume(ast.SEMICOLON, "expected ';' after break.")
+		}
 	} else {
 		stmt, err = p.parseExprStmt()
 	}
@@ -143,6 +153,9 @@ func (p *Parser) parseIfStmt() (ast.Stmt, []error) {
 
 // whileStmt      -> "while" "(" expression ")" statement ;
 func (p *Parser) parseWhileStmt() (ast.Stmt, []error) {
+	p.incLoopLevel()
+	defer p.decLoopLevel()
+
 	if !p.match(ast.LEFT_PAREN) {
 		return ast.NewInvalidStmt(),
 			[]error{util.NewSyntaxError(p.peek(), "expected condition after 'while'.")}
@@ -168,6 +181,9 @@ func (p *Parser) parseWhileStmt() (ast.Stmt, []error) {
 
 // forStmt        -> "for" "(" (varDeclStmt | exprStmt | ";" ) expression? ";" expression? ")" statement ;
 func (p *Parser) parseForStmt() (ast.Stmt, []error) {
+	p.incLoopLevel()
+	defer p.decLoopLevel()
+
 	_, err := p.consume(ast.LEFT_PAREN, "expected condition after 'for'.")
 	if err != nil {
 		return ast.NewInvalidStmt(), []error{err}
@@ -586,4 +602,12 @@ func (p *Parser) skipToNextStatement() {
 
 		p.current += 1
 	}
+}
+
+func (p *Parser) incLoopLevel() {
+	p.loopLevel += 1
+}
+
+func (p *Parser) decLoopLevel() {
+	p.loopLevel -= 1
 }

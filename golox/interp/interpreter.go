@@ -7,7 +7,8 @@ import (
 )
 
 type Interpreter struct {
-	env environment
+	env     environment
+	doBreak bool
 }
 
 func NewInterpreter() Interpreter {
@@ -41,7 +42,7 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 
 		for _, child := range stmt.Children {
 			err = i.Execute(child)
-			if err != nil {
+			if err != nil || i.doBreak {
 				break
 			}
 		}
@@ -58,7 +59,7 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 
 	case ast.ST_WHILE:
 		exprValue, err = i.Evaluate(stmt.Expr)
-		for exprValue.IsTruthy() {
+		for exprValue.IsTruthy() && !i.doBreak {
 			err = i.Execute(stmt.Children[0])
 			if err != nil {
 				break
@@ -68,6 +69,11 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 				break
 			}
 		}
+		// Only break out of the innermost loop
+		i.doBreak = false
+
+	case ast.ST_BREAK:
+		i.doBreak = true
 
 	default:
 		panic(assert.MissingCase(stmt.Type))

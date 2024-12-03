@@ -50,6 +50,7 @@ const (
 	TRUE
 	VAR
 	WHILE
+	BREAK
 
 	EOF
 )
@@ -71,6 +72,7 @@ var KeywordStrings = map[string]TokenType{
 	"true":   TRUE,
 	"var":    VAR,
 	"while":  WHILE,
+	"break":  BREAK,
 }
 
 type Token struct {

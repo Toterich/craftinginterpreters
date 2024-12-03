@@ -11,6 +11,7 @@ const (
 	ST_IF
 	ST_WHILE
 	ST_FOR
+	ST_BREAK
 )
 
 type Stmt struct {
@@ -49,4 +50,8 @@ func NewIfStmt(condition Expr, ifBranch Stmt, elseBranch Stmt) Stmt {
 
 func NewWhileStmt(condition Expr, loop Stmt) Stmt {
 	return Stmt{Type: ST_WHILE, Expr: condition, Children: []Stmt{loop}}
+}
+
+func NewBreakStmt() Stmt {
+	return Stmt{Type: ST_BREAK}
 }
