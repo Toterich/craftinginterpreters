@@ -27,7 +27,7 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	var statements []ast.Stmt
 
 	for !p.isAtEnd() {
-		stmt, errs := p.parseStatement()
+		stmt, errs := p.parseDeclaration()
 		// Discard statements with a parse error
 		if errs != nil {
 			p.errs = append(p.errs, errs...)
@@ -40,8 +40,24 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
+// declaration    -> varDeclStmt | statement ;
+func (p *Parser) parseDeclaration() (ast.Stmt, []error) {
+	var stmt ast.Stmt
+	var err error
+	if p.match(ast.VAR) {
+		stmt, err = p.parseVarDecl()
+		if err != nil {
+			return stmt, []error{err}
+		} else {
+			return stmt, nil
+		}
+	}
+
+	return p.parseStatement()
+}
+
 // statement
-// -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | forStmt | breakStmt | blockStmt ;
+// -> exprStmt | ifStmt | printStmt | whileStmt | forStmt | breakStmt | blockStmt ;
 func (p *Parser) parseStatement() (ast.Stmt, []error) {
 	if p.match(ast.LEFT_BRACE) {
 		return p.parseBlockStmt()
@@ -61,9 +77,7 @@ func (p *Parser) parseStatement() (ast.Stmt, []error) {
 
 	var stmt ast.Stmt
 	var err error
-	if p.match(ast.VAR) {
-		stmt, err = p.parseVarDeclStmt()
-	} else if p.match(ast.PRINT) {
+	if p.match(ast.PRINT) {
 		stmt, err = p.parsePrintStmt()
 	} else if p.match(ast.BREAK) {
 		if p.loopLevel < 1 {
@@ -96,7 +110,7 @@ func (p *Parser) parseBlockStmt() (ast.Stmt, []error) {
 	}
 
 	for !p.isAtEnd() {
-		stmt, err := p.parseStatement()
+		stmt, err := p.parseDeclaration()
 		if err != nil {
 			errs = append(errs, err...)
 			// We continue parsing until the end of the block so the parser doesn't trip up.
@@ -192,7 +206,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	// Parse the initializer, which can either be a variable declaration, an expression, or nothing
 	var initializer ast.Stmt
 	if p.match(ast.VAR) {
-		initializer, err = p.parseVarDeclStmt()
+		initializer, err = p.parseVarDecl()
 	} else if p.match(ast.SEMICOLON) {
 		initializer, err = ast.NewInvalidStmt(), nil
 	} else {
@@ -265,7 +279,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 }
 
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
-func (p *Parser) parseVarDeclStmt() (ast.Stmt, error) {
+func (p *Parser) parseVarDecl() (ast.Stmt, error) {
 	if !p.match(ast.IDENTIFIER) {
 		return ast.NewInvalidStmt(),
 			util.NewSyntaxError(p.peek(), "expected Identifier after 'var'.")
@@ -558,7 +572,7 @@ func (p *Parser) parsePrimary() (ast.Expr, error) {
 		return ast.NewGroupingExpr(expr), err
 	}
 
-	return ast.Expr{}, util.NewSyntaxError(p.peek(), "expected Expression.")
+	return ast.Expr{}, util.NewSyntaxError(p.peek(), "expected expression.")
 }
 
 // Checks if the current Token is one of the given types and if so, consumes it and returns true

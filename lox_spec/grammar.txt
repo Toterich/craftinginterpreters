@@ -1,5 +1,6 @@
-program        -> statement* EOF;
-statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | forStmt | blockStmt | breakStmt ;
+program        -> declaration* EOF;
+declaration    -> varDeclStmt | statement ;
+statement      -> exprStmt | ifStmt | printStmt | whileStmt | forStmt | blockStmt | breakStmt ;
 exprStmt       -> expression ";" ;
 ifStmt         -> "if" "(" expression ")" statement ("else" statement)? ;
 printStmt      -> "print" expression ";" ;
@@ -9,7 +10,7 @@ forStmt        -> "for" "(" (varDeclStmt | exprStmt | ";" )
                    expression? ";"
                    expression? ")" statement ;
 breakStmt      -> "break" ";" ;
-blockStmt      -> "{" statement* "}" ;
+blockStmt      -> "{" declaration* "}" ;
 expression     -> comma_op ;
 comma_op       -> assignment ("," assignment)* ;
 assignment     -> IDENTIFIER "=" assignment | logic_or ;

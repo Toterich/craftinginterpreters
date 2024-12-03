@@ -197,6 +197,7 @@ func (i Interpreter) evalCall(expr ast.Expr) (ast.LoxValue, error) {
 		args = append(args, arg)
 	}
 
+	return callee, nil
 }
 
 func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error {
