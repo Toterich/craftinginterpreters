@@ -38,41 +38,34 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
-// statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | blockStmt ;
+// statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | forStmt | blockStmt ;
 func (p *Parser) parseStatement() (ast.Stmt, []error) {
 	if p.match(ast.LEFT_BRACE) {
 		return p.parseBlockStmt()
 	}
-
 	if p.match(ast.IF) {
 		return p.parseIfStmt()
 	}
 	if p.match(ast.WHILE) {
 		return p.parseWhileStmt()
 	}
+	if p.match(ast.FOR) {
+		return p.parseForStmt()
+	}
+
 	// The following statements can only produce a single error each, which
 	// is packed inside a single-element array
 
+	var stmt ast.Stmt
+	var err error
 	if p.match(ast.VAR) {
-		stmt, err := p.parseVarDeclStmt()
-		// This check is necessary to avoid creating an empty (not-nil) slice of a
-		// nil error
-		if err != nil {
-			return stmt, []error{err}
-		} else {
-			return stmt, nil
-		}
-	}
-	if p.match(ast.PRINT) {
-		stmt, err := p.parsePrintStmt()
-		if err != nil {
-			return stmt, []error{err}
-		} else {
-			return stmt, nil
-		}
+		stmt, err = p.parseVarDeclStmt()
+	} else if p.match(ast.PRINT) {
+		stmt, err = p.parsePrintStmt()
+	} else {
+		stmt, err = p.parseExprStmt()
 	}
 
-	stmt, err := p.parseExprStmt()
 	if err != nil {
 		return stmt, []error{err}
 	} else {
@@ -171,6 +164,88 @@ func (p *Parser) parseWhileStmt() (ast.Stmt, []error) {
 	}
 
 	return ast.NewWhileStmt(condition, loopStmt), nil
+}
+
+// forStmt        -> "for" "(" (varDeclStmt | exprStmt | ";" ) expression? ";" expression? ")" statement ;
+func (p *Parser) parseForStmt() (ast.Stmt, []error) {
+	_, err := p.consume(ast.LEFT_PAREN, "expected condition after 'for'.")
+	if err != nil {
+		return ast.NewInvalidStmt(), []error{err}
+	}
+
+	// Parse the initializer, which can either be a variable declaration, an expression, or nothing
+	var initializer ast.Stmt
+	if p.match(ast.VAR) {
+		initializer, err = p.parseVarDeclStmt()
+	} else if p.match(ast.SEMICOLON) {
+		initializer, err = ast.NewInvalidStmt(), nil
+	} else {
+		initializer, err = p.parseExprStmt()
+	}
+	if err != nil {
+		return initializer, []error{err}
+	}
+
+	// Parse the end condition, which is either an expression or nothing
+	var condition ast.Expr
+	if p.check(ast.SEMICOLON) {
+		// If the condition is omitted, we do the same thing as C and replace it by a non-zero constant,
+		// in this case a true literal. This means the loop will run indefinitely.
+		condition, err =
+			ast.NewLiteralExpr(
+				ast.Token{Type: ast.TRUE, Literal: ast.NewBoolValue(true), Line: p.peek().Line}),
+			nil
+	} else {
+		condition, err = p.parseExpression()
+		if err != nil {
+			return ast.NewExprStmt(condition), []error{err}
+		}
+	}
+	_, err = p.consume(ast.SEMICOLON, "expected ';' after 'for' condition")
+	if err != nil {
+		return ast.NewExprStmt(condition), []error{err}
+	}
+
+	// Parse the increment, which is either an expression or nothing
+	var increment ast.Expr
+	if p.check(ast.RIGHT_PAREN) {
+		increment, err = ast.Expr{}, nil
+	} else {
+		increment, err = p.parseExpression()
+		if err != nil {
+			return ast.NewExprStmt(increment), []error{err}
+		}
+	}
+	_, err = p.consume(ast.RIGHT_PAREN, "expected closing ')' after 'for' increment")
+	if err != nil {
+		return ast.NewExprStmt(increment), []error{err}
+	}
+
+	body, errs := p.parseStatement()
+	if errs != nil {
+		return body, errs
+	}
+
+	// Desugar the for loop to a while statement by adding the initializer and increment as
+	// statements
+	while := ast.NewWhileStmt(condition, body)
+
+	if increment.Type != ast.EXPR_INVALID {
+		// If the loop body is already a block statement, append the increment to the end, otherwise create
+		// a block statement of the original body and the increment
+		if while.Children[0].Type == ast.ST_BLOCK {
+			while.Children[0].Children = append(while.Children[0].Children, ast.NewExprStmt(increment))
+		} else {
+			while.Children[0] = ast.NewBlockStmt([]ast.Stmt{while.Children[0], ast.NewExprStmt(increment)})
+		}
+	}
+
+	if initializer.Type != ast.ST_INVALID {
+		// Wrap the whole while statement in a block and prepend the initializer
+		while = ast.NewBlockStmt([]ast.Stmt{initializer, while})
+	}
+
+	return while, nil
 }
 
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";

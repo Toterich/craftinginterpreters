@@ -1,10 +1,13 @@
 program        -> statement* EOF;
-statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | blockStmt ;
+statement      -> exprStmt | ifStmt | printStmt | varDeclStmt | whileStmt | forStmt | blockStmt ;
 exprStmt       -> expression ";" ;
 ifStmt         -> "if" "(" expression ")" statement ("else" statement)? ;
 printStmt      -> "print" expression ";" ;
 varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";" ;
 whileStmt      -> "while" "(" expression ")" statement ;
+forStmt        -> "for" "(" (varDeclStmt | exprStmt | ";" )
+                   expression? ";"
+                   expression? ")" statement ;
 blockStmt      -> "{" statement* "}" ;
 expression     -> comma_op ;
 comma_op       -> assignment ("," assignment)* ;
