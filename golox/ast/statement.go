@@ -12,13 +12,14 @@ const (
 	ST_WHILE
 	ST_FOR
 	ST_BREAK
+	ST_FUNCTION
 )
 
 type Stmt struct {
 	Type     StmtType
 	Expr     Expr
-	Ident    string // For VarDecl Statement
-	Children []Stmt // For Block Statement
+	Tokens   []Token
+	Children []Stmt
 }
 
 func NewInvalidStmt() Stmt {
@@ -33,11 +34,12 @@ func NewPrintStmt(expr Expr) Stmt {
 	return Stmt{Type: ST_PRINT, Expr: expr}
 }
 
-func NewVarDeclStmt(ident string) Stmt {
+// In a Var Decl, the token is the identifier of the new variable
+func NewVarDeclStmt(token Token) Stmt {
 	// TODO: This is a bit weird because Expressions always store a Token indicating the position where
 	// the Expression occurs in the source, but for empty variable declarations we need to assign
 	// an implicit nil Expression. Maybe Expressions need to be decoupled form source locations in general?
-	return Stmt{Type: ST_VARDECL, Ident: ident, Expr: NewLiteralExpr(Token{Type: NIL, Line: -1})}
+	return Stmt{Type: ST_VARDECL, Tokens: []Token{token}, Expr: NewLiteralExpr(Token{Type: NIL, Line: -1})}
 }
 
 func NewBlockStmt(children []Stmt) Stmt {
@@ -54,4 +56,10 @@ func NewWhileStmt(condition Expr, loop Stmt) Stmt {
 
 func NewBreakStmt() Stmt {
 	return Stmt{Type: ST_BREAK}
+}
+
+// In a Function Stmt, the first Token is the function identifier and the subsequent ones are
+// the function parameters
+func NewFunDeclStmt(name Token, params []Token, body []Stmt) Stmt {
+	return Stmt{Type: ST_FUNCTION, Tokens: append([]Token{name}, params...), Children: body}
 }

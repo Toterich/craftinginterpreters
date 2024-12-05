@@ -13,7 +13,7 @@ const (
 	LT_STRING
 	LT_NUMBER // 64bit float
 	LT_BOOL
-	LT_CALLABLE
+	LT_FUNCTION
 )
 
 func (t LoxType) String() string {
@@ -26,8 +26,8 @@ func (t LoxType) String() string {
 		return "Number"
 	case LT_BOOL:
 		return "Bool"
-	case LT_CALLABLE:
-		return "Callable"
+	case LT_FUNCTION:
+		return "Function"
 	default:
 		panic(assert.MissingCase(t))
 	}

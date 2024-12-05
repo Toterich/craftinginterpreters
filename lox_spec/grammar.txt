@@ -1,12 +1,15 @@
 program        -> declaration* EOF;
-declaration    -> varDeclStmt | statement ;
+declaration    -> funDecl | varDecl | statement ;
+funDecl        -> "fun" function ;
+function       -> IDENTIFIER "(" parameters? ")" blockStmt ;
+parameters     -> IDENTIFIER ( "," IDENTIFIER )* ;
+varDecl        -> "var" IDENTIFIER ("=" expression)? ";" ;
 statement      -> exprStmt | ifStmt | printStmt | whileStmt | forStmt | blockStmt | breakStmt ;
 exprStmt       -> expression ";" ;
 ifStmt         -> "if" "(" expression ")" statement ("else" statement)? ;
 printStmt      -> "print" expression ";" ;
-varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";" ;
 whileStmt      -> "while" "(" expression ")" statement ;
-forStmt        -> "for" "(" (varDeclStmt | exprStmt | ";" )
+forStmt        -> "for" "(" (varDecl | exprStmt | ";" )
                    expression? ";"
                    expression? ")" statement ;
 breakStmt      -> "break" ";" ;

@@ -34,7 +34,7 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 	case ast.ST_VARDECL:
 		exprValue, err = i.Evaluate(stmt.Expr)
 		if err == nil {
-			i.env.declareVal(stmt.Ident, exprValue)
+			i.env.declareVal(stmt.Tokens[0].Lexeme, exprValue)
 		}
 
 	case ast.ST_BLOCK:

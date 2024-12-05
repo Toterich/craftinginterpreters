@@ -40,20 +40,110 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	return statements, p.errs
 }
 
-// declaration    -> varDeclStmt | statement ;
+// declaration    -> funDecl | varDecl | statement ;
 func (p *Parser) parseDeclaration() (ast.Stmt, []error) {
 	var stmt ast.Stmt
 	var err error
-	if p.match(ast.VAR) {
+
+	if p.match(ast.FUN) {
+		return p.parseFunDecl()
+	} else if p.match(ast.VAR) {
 		stmt, err = p.parseVarDecl()
+		// Wrap single error in slice
 		if err != nil {
 			return stmt, []error{err}
 		} else {
 			return stmt, nil
 		}
+	} else {
+		return p.parseStatement()
+	}
+}
+
+// funDecl        -> "fun" function ;
+// function       -> IDENTIFIER "(" parameters? ")" blockStmt ;
+// parameters     -> IDENTIFIER ( "," IDENTIFIER )* ;
+func (p *Parser) parseFunDecl() (ast.Stmt, []error) {
+	// Function name
+	name, err := p.consume(ast.IDENTIFIER, "expected identifier after 'fun'.")
+	if err != nil {
+		return ast.NewInvalidStmt(), []error{err}
 	}
 
-	return p.parseStatement()
+	_, err = p.consume(ast.LEFT_PAREN, "expected '(' after function name.")
+	if err != nil {
+		return ast.NewInvalidStmt(), []error{err}
+	}
+
+	// Function parameters
+	var params []ast.Token
+
+	funcParseParam := func() error {
+		param, err := p.parsePrimary()
+		if err != nil {
+			return err
+		}
+		if param.Type != ast.EXPR_IDENTIFIER {
+			return util.NewSyntaxError(p.previous(), "function parameter needs to be an identifier.")
+		}
+		params = append(params, param.Token)
+		return nil
+	}
+
+	if !p.match(ast.RIGHT_PAREN) {
+		// first parameter
+		err = funcParseParam()
+		if err != nil {
+			return ast.NewInvalidStmt(), []error{err}
+		}
+
+		// additional parameters
+		for p.match(ast.COMMA) {
+			err = funcParseParam()
+			if err != nil {
+				return ast.NewInvalidStmt(), []error{err}
+			}
+		}
+
+		_, err = p.consume(ast.RIGHT_PAREN, "expected ')' after function parameters.")
+		if err != nil {
+			return ast.NewInvalidStmt(), []error{err}
+		}
+	} // else, there are no parameters
+
+	// Function Body
+	_, err = p.consume(ast.LEFT_BRACE, "expected '{' before function body.")
+	if err != nil {
+		return ast.NewInvalidStmt(), []error{err}
+	}
+
+	body, errs := p.parseBlockStmt()
+	if errs != nil {
+		return body, errs
+	}
+
+	return ast.NewFunDeclStmt(name, params, body.Children), nil
+}
+
+// varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
+func (p *Parser) parseVarDecl() (ast.Stmt, error) {
+	if !p.match(ast.IDENTIFIER) {
+		return ast.NewInvalidStmt(),
+			util.NewSyntaxError(p.peek(), "expected identifier after 'var'.")
+	}
+
+	stmt := ast.NewVarDeclStmt(p.previous())
+
+	if p.match(ast.EQUAL) {
+		expr, err := p.parseExpression()
+		if err != nil {
+			return ast.NewInvalidStmt(), err
+		}
+		stmt.Expr = expr
+	}
+
+	_, err := p.consume(ast.SEMICOLON, "expected ; after variable declaration.")
+	return stmt, err
 }
 
 // statement
@@ -276,27 +366,6 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	}
 
 	return while, nil
-}
-
-// varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
-func (p *Parser) parseVarDecl() (ast.Stmt, error) {
-	if !p.match(ast.IDENTIFIER) {
-		return ast.NewInvalidStmt(),
-			util.NewSyntaxError(p.peek(), "expected Identifier after 'var'.")
-	}
-
-	stmt := ast.NewVarDeclStmt(p.previous().Lexeme)
-
-	if p.match(ast.EQUAL) {
-		expr, err := p.parseExpression()
-		if err != nil {
-			return ast.NewInvalidStmt(), err
-		}
-		stmt.Expr = expr
-	}
-
-	_, err := p.consume(ast.SEMICOLON, "expected ; after variable declaration.")
-	return stmt, err
 }
 
 // printStmt      -> "print" expression ";"
