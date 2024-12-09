@@ -33,6 +33,14 @@ func (t LoxType) String() string {
 	}
 }
 
+type LoxFunction struct {
+	Declaration Stmt
+}
+
+func (lf LoxFunction) Arity() int {
+	return len(lf.Declaration.Tokens) - 1
+}
+
 // A Value in Lox, represented by a type and a pointer to the actual value.
 // Use Type Assertions (see below) to extract the value
 type LoxValue struct {
@@ -54,6 +62,10 @@ func NewNumberValue(num float64) LoxValue {
 
 func NewBoolValue(val bool) LoxValue {
 	return LoxValue{Type: LT_BOOL, Value: val}
+}
+
+func NewFunction(fun LoxFunction) LoxValue {
+	return LoxValue{Type: LT_FUNCTION, Value: fun}
 }
 
 func (v LoxValue) IsTruthy() bool {
@@ -87,6 +99,10 @@ func (v LoxValue) AsBool() bool {
 	return v.Value.(bool)
 }
 
+func (v LoxValue) AsFunction() LoxFunction {
+	return v.Value.(LoxFunction)
+}
+
 // String representation of the LoxValue, don't confuse with AsString()!
 func (v LoxValue) String() string {
 	switch v.Type {
@@ -98,6 +114,8 @@ func (v LoxValue) String() string {
 		return strconv.FormatFloat(v.AsNumber(), 'g', -1, 64)
 	case LT_STRING:
 		return v.AsString()
+	case LT_FUNCTION:
+		return v.AsFunction().Declaration.Tokens[0].Lexeme
 	default:
 		panic(assert.MissingCase(v.Type))
 	}

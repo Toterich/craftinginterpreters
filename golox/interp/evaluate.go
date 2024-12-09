@@ -188,7 +188,12 @@ func (i Interpreter) evalCall(expr ast.Expr) (ast.LoxValue, error) {
 		return callee, err
 	}
 
-	args := make([]ast.LoxValue, 0)
+	if callee.Type != ast.LT_FUNCTION {
+		return callee, util.NewRuntimeError(expr.Token, "callee is not callable.")
+	}
+	fun := callee.AsFunction()
+
+	var args []ast.LoxValue
 	for idx := 1; idx < len(expr.Children); idx += 1 {
 		arg, err := i.Evaluate(expr.Children[idx])
 		if err != nil {
@@ -197,7 +202,12 @@ func (i Interpreter) evalCall(expr ast.Expr) (ast.LoxValue, error) {
 		args = append(args, arg)
 	}
 
-	return callee, nil
+	if fun.Arity() != len(args) {
+		return callee, util.NewRuntimeError(expr.Token,
+			fmt.Sprintf("callee expects %d arguments, got %d", fun.Arity(), len(args)))
+	}
+
+	return i.call(fun, args)
 }
 
 func checkType(token ast.Token, expected ast.LoxType, actual ast.LoxType) error {

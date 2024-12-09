@@ -12,7 +12,7 @@ const (
 	ST_WHILE
 	ST_FOR
 	ST_BREAK
-	ST_FUNCTION
+	ST_FUNDECL
 )
 
 type Stmt struct {
@@ -61,5 +61,5 @@ func NewBreakStmt() Stmt {
 // In a Function Stmt, the first Token is the function identifier and the subsequent ones are
 // the function parameters
 func NewFunDeclStmt(name Token, params []Token, body []Stmt) Stmt {
-	return Stmt{Type: ST_FUNCTION, Tokens: append([]Token{name}, params...), Children: body}
+	return Stmt{Type: ST_FUNDECL, Tokens: append([]Token{name}, params...), Children: body}
 }

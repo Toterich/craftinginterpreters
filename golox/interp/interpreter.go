@@ -38,7 +38,7 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 		}
 
 	case ast.ST_BLOCK:
-		i.env.push()
+		i.env.push(false)
 
 		for _, child := range stmt.Children {
 			err = i.Execute(child)
@@ -75,9 +75,36 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 	case ast.ST_BREAK:
 		i.doBreak = true
 
+	case ast.ST_FUNDECL:
+		fun := ast.LoxFunction{Declaration: stmt}
+		i.env.declareVal(stmt.Tokens[0].Lexeme, ast.NewFunction(fun))
+
 	default:
 		panic(assert.MissingCase(stmt.Type))
 	}
 
 	return err
+}
+
+func (i *Interpreter) call(callee ast.LoxFunction, arguments []ast.LoxValue) (ast.LoxValue, error) {
+	// For the duration of the call, create a new environment that only inherits from the global env
+	// TODO: Functions don't necessarily have access to only global scope. For those declared inside
+	// another scope, the call to them should inherit that scope instead
+	i.env.push(true)
+	defer func() { i.env.pop() }()
+
+	// Declare passed function parameters in local env
+	for idx, param := range callee.Declaration.Tokens[1:] {
+		i.env.declareVal(param.Lexeme, arguments[idx])
+	}
+
+	// Execute statements one after another in the local env
+	for _, statement := range callee.Declaration.Children {
+		err := i.Execute(statement)
+		if err != nil {
+			return ast.NewNilValue(), err
+		}
+	}
+
+	return ast.NewNilValue(), nil
 }

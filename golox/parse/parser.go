@@ -578,9 +578,9 @@ func (p *Parser) parseUnary() (ast.Expr, error) {
 // call           -> primary ( "(" arguments? ")" )* ;
 // arguments      -> expression ( ", " expression )* ;
 func (p *Parser) parseCall() (ast.Expr, error) {
-	expr, err := p.parsePrimary()
+	callee, err := p.parsePrimary()
 	if err != nil {
-		return expr, err
+		return callee, err
 	}
 
 	for p.match(ast.LEFT_PAREN) {
@@ -588,38 +588,38 @@ func (p *Parser) parseCall() (ast.Expr, error) {
 
 		// empty argument list
 		if p.match(ast.RIGHT_PAREN) {
-			expr = ast.NewCallExpr(expr, p.previous(), args)
+			callee = ast.NewCallExpr(callee, p.previous(), args)
 			continue
 		}
 
 		// first argument
-		arg, err := p.parseExpression()
+		arg, err := p.parseAssignment()
 		if err != nil {
-			return expr, err
+			return callee, err
 		}
 		args = append(args, arg)
 
 		// additional arguments
 		for p.match(ast.COMMA) {
 			if len(args) >= 255 {
-				return expr, util.NewSyntaxError(p.peek(), "can't have more than 255 arguments.")
+				return callee, util.NewSyntaxError(p.peek(), "can't have more than 255 arguments.")
 			}
-			arg, err := p.parseExpression()
+			arg, err := p.parseAssignment()
 			if err != nil {
-				return expr, err
+				return callee, err
 			}
 			args = append(args, arg)
 		}
 
 		close, err := p.consume(ast.RIGHT_PAREN, "expected ')' after argument list.")
 		if err != nil {
-			return expr, err
+			return callee, err
 		}
 
-		expr = ast.NewCallExpr(expr, close, args)
+		callee = ast.NewCallExpr(callee, close, args)
 	}
 
-	return expr, nil
+	return callee, nil
 }
 
 // primary        → NUMBER | STRING | IDENTIFIER | "true" | "false" | "nil" | "(" expression ")" ;
