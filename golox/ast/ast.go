@@ -1,6 +1,7 @@
 package ast
 
 type Ast struct {
-	Statements  []Stmt
+	Body        []Stmt
+	Statements  StmtStore
 	Expressions ExprStore
 }

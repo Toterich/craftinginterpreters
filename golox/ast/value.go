@@ -34,11 +34,11 @@ func (t LoxType) String() string {
 }
 
 type LoxFunction struct {
-	Declaration Stmt
+	Declaration *FunDeclStmt
 }
 
 func (lf LoxFunction) Arity() int {
-	return len(lf.Declaration.Tokens) - 1
+	return len(lf.Declaration.Params)
 }
 
 // A Value in Lox, represented by a type and a pointer to the actual value.
@@ -115,7 +115,9 @@ func (v LoxValue) String() string {
 	case LT_STRING:
 		return v.AsString()
 	case LT_FUNCTION:
-		return v.AsFunction().Declaration.Tokens[0].Lexeme
+		// TODO: LoxValue will be reworked anyway
+		return ""
+		//return v.AsFunction().Declaration.Tokens[0].Lexeme
 	default:
 		panic(assert.MissingCase(v.Type))
 	}

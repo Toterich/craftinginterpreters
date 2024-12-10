@@ -1,62 +1,117 @@
 package ast
 
-type StmtType int
-
-const (
-	ST_INVALID StmtType = iota
-	ST_EXPR
-	ST_PRINT
-	ST_VARDECL
-	ST_BLOCK
-	ST_IF
-	ST_WHILE
-	ST_FOR
-	ST_BREAK
-	ST_FUNDECL
-)
-
-type Stmt struct {
-	Type     StmtType
-	Expr     Expr
-	Tokens   []Token
-	Children []Stmt
+type Stmt interface {
+	isStmt()
 }
 
-func NewInvalidStmt() Stmt {
-	return Stmt{Type: ST_INVALID}
+type ExprStmt struct {
+	Expr Expr
 }
 
-func NewExprStmt(expr Expr) Stmt {
-	return Stmt{Type: ST_EXPR, Expr: expr}
+func (s ExprStmt) isStmt() {}
+
+type PrintStmt struct {
+	Expr Expr
 }
 
-func NewPrintStmt(expr Expr) Stmt {
-	return Stmt{Type: ST_PRINT, Expr: expr}
+func (s PrintStmt) isStmt() {}
+
+type VarDeclStmt struct {
+	Identifier Token
+	Value      Expr
 }
 
-// In a Var Decl, the token is the identifier of the new variable
-func NewVarDeclStmt(token Token) Stmt {
-	return Stmt{Type: ST_VARDECL, Tokens: []Token{token}, Expr: nil}
+func (s VarDeclStmt) isStmt() {}
+
+type BlockStmt struct {
+	Body []Stmt
 }
 
-func NewBlockStmt(children []Stmt) Stmt {
-	return Stmt{Type: ST_BLOCK, Children: children}
+func (s BlockStmt) isStmt() {}
+
+type IfStmt struct {
+	Condition Expr
+	Then      Stmt
+	Else      Stmt
 }
 
-func NewIfStmt(condition Expr, ifBranch Stmt, elseBranch Stmt) Stmt {
-	return Stmt{Type: ST_IF, Expr: condition, Children: []Stmt{ifBranch, elseBranch}}
+func (s IfStmt) isStmt() {}
+
+type WhileStmt struct {
+	Condition Expr
+	Then      Stmt
 }
 
-func NewWhileStmt(condition Expr, loop Stmt) Stmt {
-	return Stmt{Type: ST_WHILE, Expr: condition, Children: []Stmt{loop}}
+func (s WhileStmt) isStmt() {}
+
+type BreakStmt struct {
 }
 
-func NewBreakStmt() Stmt {
-	return Stmt{Type: ST_BREAK}
+func (s BreakStmt) isStmt() {}
+
+type FunDeclStmt struct {
+	Name   Token
+	Params []Token
+	Body   []Stmt
 }
 
-// In a Function Stmt, the first Token is the function identifier and the subsequent ones are
-// the function parameters
-func NewFunDeclStmt(name Token, params []Token, body []Stmt) Stmt {
-	return Stmt{Type: ST_FUNDECL, Tokens: append([]Token{name}, params...), Children: body}
+func (s FunDeclStmt) isStmt() {}
+
+type StmtStore struct {
+	Expr    []ExprStmt
+	Print   []PrintStmt
+	VarDecl []VarDeclStmt
+	Block   []BlockStmt
+	If      []IfStmt
+	While   []WhileStmt
+	Break   []BreakStmt
+	FunDecl []FunDeclStmt
+}
+
+func (ss *StmtStore) NewExpr(expr Expr) *ExprStmt {
+	idx := len(ss.Expr)
+	ss.Expr = append(ss.Expr, ExprStmt{Expr: expr})
+	return &ss.Expr[idx]
+}
+
+func (ss *StmtStore) NewPrint(expr Expr) *PrintStmt {
+	idx := len(ss.Print)
+	ss.Print = append(ss.Print, PrintStmt{Expr: expr})
+	return &ss.Print[idx]
+}
+
+func (ss *StmtStore) NewVarDecl(identifier Token, value Expr) *VarDeclStmt {
+	idx := len(ss.VarDecl)
+	ss.VarDecl = append(ss.VarDecl, VarDeclStmt{Identifier: identifier, Value: value})
+	return &ss.VarDecl[idx]
+}
+
+func (ss *StmtStore) NewBlock(children []Stmt) *BlockStmt {
+	idx := len(ss.Block)
+	ss.Block = append(ss.Block, BlockStmt{Body: children})
+	return &ss.Block[idx]
+}
+
+func (ss *StmtStore) NewIf(condition Expr, then Stmt, else_ Stmt) *IfStmt {
+	idx := len(ss.If)
+	ss.If = append(ss.If, IfStmt{Condition: condition, Then: then, Else: else_})
+	return &ss.If[idx]
+}
+
+func (ss *StmtStore) NewWhile(condition Expr, then Stmt) *WhileStmt {
+	idx := len(ss.While)
+	ss.While = append(ss.While, WhileStmt{Condition: condition, Then: then})
+	return &ss.While[idx]
+}
+
+func (ss *StmtStore) NewBreak() *BreakStmt {
+	idx := len(ss.Break)
+	ss.Break = append(ss.Break, BreakStmt{})
+	return &ss.Break[idx]
+}
+
+func (ss *StmtStore) NewFunDecl(name Token, params []Token, children []Stmt) *FunDeclStmt {
+	idx := len(ss.FunDecl)
+	ss.FunDecl = append(ss.FunDecl, FunDeclStmt{Name: name, Params: params, Body: children})
+	return &ss.FunDecl[idx]
 }

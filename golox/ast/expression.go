@@ -1,20 +1,5 @@
 package ast
 
-type ExprType int
-
-const (
-	EXPR_INVALID ExprType = iota
-	EXPR_LITERAL
-	EXPR_UNARY
-	EXPR_BINARY
-	EXPR_GROUPING
-	EXPR_IDENTIFIER
-	EXPR_ASSIGN
-	EXPR_OR
-	EXPR_AND
-	EXPR_CALL
-)
-
 // Tag interface for Expression types
 type Expr interface {
 	isExpr()

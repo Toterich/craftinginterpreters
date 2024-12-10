@@ -21,8 +21,9 @@ type Parser struct {
 // program        -> statement* EOF;
 func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	p.tokens = input
-	p.current = 0
 	p.errs = nil
+	p.ast = ast.Ast{}
+	p.current = 0
 	p.loopLevel = 0
 
 	for !p.isAtEnd() {
@@ -32,11 +33,11 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 			p.errs = append(p.errs, errs...)
 			p.skipToNextStatement()
 		} else {
-			p.ast.Statements = append(p.ast.Statements, stmt)
+			p.ast.Body = append(p.ast.Body, stmt)
 		}
 	}
 
-	return p.ast.Statements, p.errs
+	return p.ast.Body, p.errs
 }
 
 // declaration    -> funDecl | varDecl | statement ;
@@ -66,12 +67,12 @@ func (p *Parser) parseFunDecl() (ast.Stmt, []error) {
 	// Function name
 	name, err := p.consume(ast.IDENTIFIER, "expected identifier after 'fun'.")
 	if err != nil {
-		return ast.NewInvalidStmt(), []error{err}
+		return nil, []error{err}
 	}
 
 	_, err = p.consume(ast.LEFT_PAREN, "expected '(' after function name.")
 	if err != nil {
-		return ast.NewInvalidStmt(), []error{err}
+		return nil, []error{err}
 	}
 
 	// Function parameters
@@ -95,27 +96,27 @@ func (p *Parser) parseFunDecl() (ast.Stmt, []error) {
 		// first parameter
 		err = funcParseParam()
 		if err != nil {
-			return ast.NewInvalidStmt(), []error{err}
+			return nil, []error{err}
 		}
 
 		// additional parameters
 		for p.match(ast.COMMA) {
 			err = funcParseParam()
 			if err != nil {
-				return ast.NewInvalidStmt(), []error{err}
+				return nil, []error{err}
 			}
 		}
 
 		_, err = p.consume(ast.RIGHT_PAREN, "expected ')' after function parameters.")
 		if err != nil {
-			return ast.NewInvalidStmt(), []error{err}
+			return nil, []error{err}
 		}
 	} // else, there are no parameters
 
 	// Function Body
 	_, err = p.consume(ast.LEFT_BRACE, "expected '{' before function body.")
 	if err != nil {
-		return ast.NewInvalidStmt(), []error{err}
+		return nil, []error{err}
 	}
 
 	body, errs := p.parseBlockStmt()
@@ -123,24 +124,28 @@ func (p *Parser) parseFunDecl() (ast.Stmt, []error) {
 		return body, errs
 	}
 
-	return ast.NewFunDeclStmt(name, params, body.Children), nil
+	if body, ok := body.(*ast.BlockStmt); ok {
+		return p.ast.Statements.NewFunDecl(name, params, body.Body), nil
+	} else {
+		panic("FunDecl body should have been a block statement, but wasn't")
+	}
 }
 
 // varDeclStmt    -> "var" IDENTIFIER ("=" expression)? ";";
 func (p *Parser) parseVarDecl() (ast.Stmt, error) {
 	if !p.match(ast.IDENTIFIER) {
-		return ast.NewInvalidStmt(),
+		return nil,
 			util.NewSyntaxError(p.peek(), "expected identifier after 'var'.")
 	}
 
-	stmt := ast.NewVarDeclStmt(p.previous())
+	stmt := p.ast.Statements.NewVarDecl(p.previous(), nil)
 
 	if p.match(ast.EQUAL) {
 		expr, err := p.parseExpression()
 		if err != nil {
-			return ast.NewInvalidStmt(), err
+			return nil, err
 		}
-		stmt.Expr = expr
+		stmt.Value = expr
 	}
 
 	_, err := p.consume(ast.SEMICOLON, "expected ; after variable declaration.")
@@ -174,7 +179,7 @@ func (p *Parser) parseStatement() (ast.Stmt, []error) {
 		if p.loopLevel < 1 {
 			err = util.NewSyntaxError(p.previous(), "break statement outside of loop.")
 		} else {
-			stmt = ast.NewBreakStmt()
+			stmt = p.ast.Statements.NewBreak()
 			_, err = p.consume(ast.SEMICOLON, "expected ';' after break.")
 		}
 	} else {
@@ -192,12 +197,12 @@ func (p *Parser) parseStatement() (ast.Stmt, []error) {
 // parseBlockStmt() can return multiple errors because each nested statement can
 // produce an error
 func (p *Parser) parseBlockStmt() (ast.Stmt, []error) {
-	children := make([]ast.Stmt, 0)
-	var errs []error = nil
+	var body []ast.Stmt
+	var errs []error
 
 	// Empty blocks are allowed
 	if p.match(ast.RIGHT_BRACE) {
-		return ast.NewBlockStmt(children), errs
+		return p.ast.Statements.NewBlock(body), errs
 	}
 
 	for !p.isAtEnd() {
@@ -208,34 +213,34 @@ func (p *Parser) parseBlockStmt() (ast.Stmt, []error) {
 			p.skipToNextStatement()
 			// Check if we skipped over the end of the block
 			if p.previous().Type == ast.RIGHT_BRACE {
-				return ast.NewBlockStmt(children), errs
+				return p.ast.Statements.NewBlock(body), errs
 			}
 			continue
 		}
-		children = append(children, stmt)
+		body = append(body, stmt)
 		if p.match(ast.RIGHT_BRACE) {
-			return ast.NewBlockStmt(children), errs
+			return p.ast.Statements.NewBlock(body), errs
 		}
 	}
 
 	errs = append(errs, util.NewSyntaxError(p.peek(), "missing closing '}'."))
-	return ast.NewBlockStmt(children), errs
+	return p.ast.Statements.NewBlock(body), errs
 }
 
 // ifStmt         -> "if" "(" expression ")" statement ("else" statement)? ;
 func (p *Parser) parseIfStmt() (ast.Stmt, []error) {
 	if !p.match(ast.LEFT_PAREN) {
-		return ast.NewInvalidStmt(),
+		return nil,
 			[]error{util.NewSyntaxError(p.peek(), "expected condition after 'if'.")}
 	}
 
 	condition, err := p.parseExpression()
 	if err != nil {
-		return ast.NewInvalidStmt(), []error{util.NewSyntaxError(p.peek(), "'if' condition must be a valid expression.")}
+		return nil, []error{util.NewSyntaxError(p.peek(), "'if' condition must be a valid expression.")}
 	}
 
 	if !p.match(ast.RIGHT_PAREN) {
-		return ast.NewInvalidStmt(),
+		return nil,
 			[]error{util.NewSyntaxError(p.peek(), "missing closing ')' after 'if' condition.")}
 	}
 
@@ -244,7 +249,7 @@ func (p *Parser) parseIfStmt() (ast.Stmt, []error) {
 		return ifStmt, errs
 	}
 
-	elseStmt := ast.NewInvalidStmt()
+	var elseStmt ast.Stmt
 
 	if p.match(ast.ELSE) {
 		elseStmt, errs = p.parseStatement()
@@ -253,7 +258,7 @@ func (p *Parser) parseIfStmt() (ast.Stmt, []error) {
 		}
 	}
 
-	return ast.NewIfStmt(condition, ifStmt, elseStmt), nil
+	return p.ast.Statements.NewIf(condition, ifStmt, elseStmt), nil
 }
 
 // whileStmt      -> "while" "(" expression ")" statement ;
@@ -262,17 +267,17 @@ func (p *Parser) parseWhileStmt() (ast.Stmt, []error) {
 	defer p.decLoopLevel()
 
 	if !p.match(ast.LEFT_PAREN) {
-		return ast.NewInvalidStmt(),
+		return nil,
 			[]error{util.NewSyntaxError(p.peek(), "expected condition after 'while'.")}
 	}
 
 	condition, err := p.parseExpression()
 	if err != nil {
-		return ast.NewInvalidStmt(), []error{util.NewSyntaxError(p.peek(), "'while' condition must be a valid expression.")}
+		return nil, []error{util.NewSyntaxError(p.peek(), "'while' condition must be a valid expression.")}
 	}
 
 	if !p.match(ast.RIGHT_PAREN) {
-		return ast.NewInvalidStmt(),
+		return nil,
 			[]error{util.NewSyntaxError(p.peek(), "missing closing ')' after 'while' condition.")}
 	}
 
@@ -281,7 +286,7 @@ func (p *Parser) parseWhileStmt() (ast.Stmt, []error) {
 		return loopStmt, errs
 	}
 
-	return ast.NewWhileStmt(condition, loopStmt), nil
+	return p.ast.Statements.NewWhile(condition, loopStmt), nil
 }
 
 // forStmt        -> "for" "(" (varDeclStmt | exprStmt | ";" ) expression? ";" expression? ")" statement ;
@@ -291,7 +296,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 
 	_, err := p.consume(ast.LEFT_PAREN, "expected condition after 'for'.")
 	if err != nil {
-		return ast.NewInvalidStmt(), []error{err}
+		return nil, []error{err}
 	}
 
 	// Parse the initializer, which can either be a variable declaration, an expression, or nothing
@@ -299,7 +304,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	if p.match(ast.VAR) {
 		initializer, err = p.parseVarDecl()
 	} else if p.match(ast.SEMICOLON) {
-		initializer, err = ast.NewInvalidStmt(), nil
+		initializer, err = nil, nil
 	} else {
 		initializer, err = p.parseExprStmt()
 	}
@@ -316,12 +321,12 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	} else {
 		condition, err = p.parseExpression()
 		if err != nil {
-			return ast.NewExprStmt(condition), []error{err}
+			return nil, []error{err}
 		}
 	}
 	_, err = p.consume(ast.SEMICOLON, "expected ';' after 'for' condition")
 	if err != nil {
-		return ast.NewExprStmt(condition), []error{err}
+		return nil, []error{err}
 	}
 
 	// Parse the increment, which is either an expression or nothing
@@ -331,12 +336,12 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	} else {
 		increment, err = p.parseExpression()
 		if err != nil {
-			return ast.NewExprStmt(increment), []error{err}
+			return nil, []error{err}
 		}
 	}
 	_, err = p.consume(ast.RIGHT_PAREN, "expected closing ')' after 'for' increment")
 	if err != nil {
-		return ast.NewExprStmt(increment), []error{err}
+		return nil, []error{err}
 	}
 
 	body, errs := p.parseStatement()
@@ -346,44 +351,44 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 
 	// Desugar the for loop to a while statement by adding the initializer and increment as
 	// statements
-	while := ast.NewWhileStmt(condition, body)
+	while := p.ast.Statements.NewWhile(condition, body)
 
 	if increment != nil {
 		// If the loop body is already a block statement, append the increment to the end, otherwise create
 		// a block statement of the original body and the increment
-		if while.Children[0].Type == ast.ST_BLOCK {
-			while.Children[0].Children = append(while.Children[0].Children, ast.NewExprStmt(increment))
+		if then, ok := while.Then.(*ast.BlockStmt); ok {
+			then.Body = append(then.Body, p.ast.Statements.NewExpr(increment))
 		} else {
-			while.Children[0] = ast.NewBlockStmt([]ast.Stmt{while.Children[0], ast.NewExprStmt(increment)})
+			while.Then = p.ast.Statements.NewBlock([]ast.Stmt{while.Then, p.ast.Statements.NewExpr(increment)})
 		}
 	}
 
-	if initializer.Type != ast.ST_INVALID {
+	if initializer != nil {
 		// Wrap the whole while statement in a block and prepend the initializer
-		while = ast.NewBlockStmt([]ast.Stmt{initializer, while})
+		return p.ast.Statements.NewBlock([]ast.Stmt{initializer, while}), nil
+	} else {
+		return while, nil
 	}
-
-	return while, nil
 }
 
 // printStmt      -> "print" expression ";"
 func (p *Parser) parsePrintStmt() (ast.Stmt, error) {
 	expr, err := p.parseExpression()
 	if err != nil {
-		return ast.NewInvalidStmt(), err
+		return nil, err
 	}
 	_, err = p.consume(ast.SEMICOLON, "expected ; after print statement.")
-	return ast.NewPrintStmt(expr), err
+	return p.ast.Statements.NewPrint(expr), err
 }
 
 // exprStmt       -> expression ";"
 func (p *Parser) parseExprStmt() (ast.Stmt, error) {
 	expr, err := p.parseExpression()
 	if err != nil {
-		return ast.NewInvalidStmt(), err
+		return nil, err
 	}
 	_, err = p.consume(ast.SEMICOLON, "expected ; after expression.")
-	return ast.NewExprStmt(expr), err
+	return p.ast.Statements.NewExpr(expr), err
 }
 
 // expression     -> comma_op

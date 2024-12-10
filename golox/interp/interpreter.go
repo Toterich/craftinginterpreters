@@ -16,31 +16,29 @@ func NewInterpreter() Interpreter {
 }
 
 func (i *Interpreter) Execute(stmt ast.Stmt) error {
-	var exprValue ast.LoxValue
 	var err error
 
-	// Execute side effects
-	switch stmt.Type {
+	switch stmt := stmt.(type) {
 
-	case ast.ST_EXPR:
+	case *ast.ExprStmt:
 		_, err = i.Evaluate(stmt.Expr)
 
-	case ast.ST_PRINT:
-		exprValue, err = i.Evaluate(stmt.Expr)
+	case *ast.PrintStmt:
+		value, err := i.Evaluate(stmt.Expr)
 		if err == nil {
-			fmt.Println(exprValue)
+			fmt.Println(value)
 		}
 
-	case ast.ST_VARDECL:
-		exprValue, err = i.Evaluate(stmt.Expr)
+	case *ast.VarDeclStmt:
+		value, err := i.Evaluate(stmt.Value)
 		if err == nil {
-			i.env.declareVal(stmt.Tokens[0].Lexeme, exprValue)
+			i.env.declareVal(stmt.Identifier.Lexeme, value)
 		}
 
-	case ast.ST_BLOCK:
+	case *ast.BlockStmt:
 		i.env.push(false)
 
-		for _, child := range stmt.Children {
+		for _, child := range stmt.Body {
 			err = i.Execute(child)
 			if err != nil || i.doBreak {
 				break
@@ -49,22 +47,27 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 
 		i.env.pop()
 
-	case ast.ST_IF:
-		exprValue, err = i.Evaluate(stmt.Expr)
-		if exprValue.IsTruthy() {
-			err = i.Execute(stmt.Children[0])
-		} else if stmt.Children[1].Type != ast.ST_INVALID {
-			err = i.Execute(stmt.Children[1])
+	case *ast.IfStmt:
+		var doIf ast.LoxValue
+		doIf, err = i.Evaluate(stmt.Condition)
+		if err != nil {
+			break
+		}
+		if doIf.IsTruthy() {
+			err = i.Execute(stmt.Then)
+		} else if stmt.Else != nil {
+			err = i.Execute(stmt.Else)
 		}
 
-	case ast.ST_WHILE:
-		exprValue, err = i.Evaluate(stmt.Expr)
-		for exprValue.IsTruthy() && !i.doBreak {
-			err = i.Execute(stmt.Children[0])
+	case *ast.WhileStmt:
+		var doWhile ast.LoxValue
+		doWhile, err = i.Evaluate(stmt.Condition)
+		for doWhile.IsTruthy() && !i.doBreak {
+			err = i.Execute(stmt.Then)
 			if err != nil {
 				break
 			}
-			exprValue, err = i.Evaluate(stmt.Expr)
+			doWhile, err = i.Evaluate(stmt.Condition)
 			if err != nil {
 				break
 			}
@@ -72,15 +75,15 @@ func (i *Interpreter) Execute(stmt ast.Stmt) error {
 		// Only break out of the innermost loop
 		i.doBreak = false
 
-	case ast.ST_BREAK:
+	case *ast.BreakStmt:
 		i.doBreak = true
 
-	case ast.ST_FUNDECL:
+	case *ast.FunDeclStmt:
 		fun := ast.LoxFunction{Declaration: stmt}
-		i.env.declareVal(stmt.Tokens[0].Lexeme, ast.NewFunction(fun))
+		i.env.declareVal(stmt.Name.Lexeme, ast.NewFunction(fun))
 
 	default:
-		panic(assert.MissingCase(stmt.Type))
+		panic(assert.MissingCase(stmt))
 	}
 
 	return err
@@ -94,12 +97,12 @@ func (i *Interpreter) call(callee ast.LoxFunction, arguments []ast.LoxValue) (as
 	defer func() { i.env.pop() }()
 
 	// Declare passed function parameters in local env
-	for idx, param := range callee.Declaration.Tokens[1:] {
+	for idx, param := range callee.Declaration.Params {
 		i.env.declareVal(param.Lexeme, arguments[idx])
 	}
 
 	// Execute statements one after another in the local env
-	for _, statement := range callee.Declaration.Children {
+	for _, statement := range callee.Declaration.Body {
 		err := i.Execute(statement)
 		if err != nil {
 			return ast.NewNilValue(), err
