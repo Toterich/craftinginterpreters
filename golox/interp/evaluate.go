@@ -8,43 +8,43 @@ import (
 )
 
 func (i Interpreter) Evaluate(expr ast.Expr) (ast.LoxValue, error) {
-	switch expr.Type {
-	case ast.EXPR_LITERAL:
+	switch expr := expr.(type) {
+	case *ast.LiteralExpr:
 		return expr.Token.Literal, nil
-	case ast.EXPR_IDENTIFIER:
+	case *ast.IdentifierExpr:
 		val, ok := i.env.getVar(expr.Token.Lexeme)
 		if !ok {
 			return val, util.NewRuntimeError(expr.Token, "undeclared identifier.")
 		}
 		return val, nil
-	case ast.EXPR_UNARY:
+	case *ast.UnaryExpr:
 		return i.evalUnary(expr)
-	case ast.EXPR_BINARY:
+	case *ast.BinaryExpr:
 		return i.evalBinary(expr)
-	case ast.EXPR_GROUPING:
+	case *ast.GroupingExpr:
 		return i.evalGrouping(expr)
-	case ast.EXPR_ASSIGN:
+	case *ast.AssignExpr:
 		return i.evalAssignment(expr)
-	case ast.EXPR_OR:
+	case *ast.OrExpr:
 		return i.evalOr(expr)
-	case ast.EXPR_AND:
+	case *ast.AndExpr:
 		return i.evalAnd(expr)
-	case ast.EXPR_CALL:
+	case *ast.CallExpr:
 		return i.evalCall(expr)
+	default:
+		panic(assert.MissingCase(expr))
 	}
-
-	panic(assert.MissingCase(expr.Type))
 }
 
-func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
-	right, err := i.Evaluate(expr.Children[0])
+func (i Interpreter) evalUnary(expr *ast.UnaryExpr) (ast.LoxValue, error) {
+	right, err := i.Evaluate(expr.Operand)
 	if err != nil {
 		return right, err
 	}
 
-	switch expr.Token.Type {
+	switch expr.Operator.Type {
 	case ast.MINUS:
-		err := checkType(expr.Token, ast.LT_NUMBER, right.Type)
+		err := checkType(expr.Operator, ast.LT_NUMBER, right.Type)
 		if err != nil {
 			return right, err
 		}
@@ -53,37 +53,37 @@ func (i Interpreter) evalUnary(expr ast.Expr) (ast.LoxValue, error) {
 		return ast.NewBoolValue(right.IsTruthy()), nil
 	}
 
-	panic(assert.MissingCase(expr.Token.Type))
+	panic(assert.MissingCase(expr.Operator.Type))
 }
 
-func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
-	left, err := i.Evaluate(expr.Children[0])
+func (i Interpreter) evalBinary(expr *ast.BinaryExpr) (ast.LoxValue, error) {
+	left, err := i.Evaluate(expr.Left)
 	if err != nil {
 		return left, err
 	}
-	right, err := i.Evaluate(expr.Children[1])
+	right, err := i.Evaluate(expr.Right)
 	if err != nil {
 		return right, err
 	}
 
-	switch expr.Token.Type {
+	switch expr.Operator.Type {
 	case ast.MINUS:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
 		return ast.NewNumberValue(left.AsNumber() - right.AsNumber()), nil
 	case ast.SLASH:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
 		if right.AsNumber() == 0 {
-			return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "division by zero")
+			return ast.NewNilValue(), util.NewRuntimeError(expr.Operator, "division by zero")
 		}
 		return ast.NewNumberValue(left.AsNumber() / right.AsNumber()), nil
 	case ast.STAR:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
@@ -95,29 +95,29 @@ func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 			return ast.NewStringValue(left.AsString() + right.AsString()), nil
 		} else {
 			return ast.NewNilValue(),
-				util.NewRuntimeError(expr.Token,
+				util.NewRuntimeError(expr.Operator,
 					fmt.Sprintf("Expected either [Number Number] or [String String] as operator's arguments, got [%s %s]", left.Type, right.Type))
 		}
 	case ast.GREATER:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
 		return ast.NewBoolValue(left.AsNumber() > right.AsNumber()), nil
 	case ast.GREATER_EQUAL:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
 		return ast.NewBoolValue(left.AsNumber() >= right.AsNumber()), nil
 	case ast.LESS:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
 		return ast.NewBoolValue(left.AsNumber() < right.AsNumber()), nil
 	case ast.LESS_EQUAL:
-		err = checkTypes(expr.Token, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
+		err = checkTypes(expr.Operator, []ast.LoxType{ast.LT_NUMBER, ast.LT_NUMBER}, []ast.LoxType{left.Type, right.Type})
 		if err != nil {
 			return ast.NewNilValue(), err
 		}
@@ -128,32 +128,32 @@ func (i Interpreter) evalBinary(expr ast.Expr) (ast.LoxValue, error) {
 		return ast.NewBoolValue(left.IsEqual(right)), nil
 	}
 
-	panic(assert.MissingCase(expr.Token.Type))
+	panic(assert.MissingCase(expr.Operator.Type))
 }
 
-func (i Interpreter) evalGrouping(expr ast.Expr) (ast.LoxValue, error) {
-	return i.Evaluate(expr.Children[0])
+func (i Interpreter) evalGrouping(expr *ast.GroupingExpr) (ast.LoxValue, error) {
+	return i.Evaluate(expr.Grouped)
 }
 
-func (i Interpreter) evalAssignment(expr ast.Expr) (ast.LoxValue, error) {
-	_, ok := i.env.getVar(expr.Token.Lexeme)
+func (i Interpreter) evalAssignment(expr *ast.AssignExpr) (ast.LoxValue, error) {
+	_, ok := i.env.getVar(expr.Target.Lexeme)
 	if !ok {
-		return ast.NewNilValue(), util.NewRuntimeError(expr.Token, "left hand side of assignment has not been declared")
+		return ast.NewNilValue(), util.NewRuntimeError(expr.Target, "left hand side of assignment has not been declared")
 	}
 
-	val, err := i.Evaluate(expr.Children[0])
+	val, err := i.Evaluate(expr.Value)
 	if err != nil {
 		return val, err
 	}
 
 	// This is already checked by getVar above
-	assert.Assert(i.env.assignVal(expr.Token.Lexeme, val), "identifier to be assigned to has not been declared")
+	assert.Assert(i.env.assignVal(expr.Target.Lexeme, val), "identifier to be assigned to has not been declared")
 
 	return val, nil
 }
 
-func (i Interpreter) evalOr(expr ast.Expr) (ast.LoxValue, error) {
-	leftVal, err := i.Evaluate(expr.Children[0])
+func (i Interpreter) evalOr(expr *ast.OrExpr) (ast.LoxValue, error) {
+	leftVal, err := i.Evaluate(expr.Left)
 	if err != nil {
 		return leftVal, err
 	}
@@ -163,12 +163,12 @@ func (i Interpreter) evalOr(expr ast.Expr) (ast.LoxValue, error) {
 		return ast.NewBoolValue(true), nil
 	}
 
-	rightVal, err := i.Evaluate(expr.Children[1])
+	rightVal, err := i.Evaluate(expr.Right)
 	return ast.NewBoolValue(rightVal.IsTruthy()), err
 }
 
-func (i Interpreter) evalAnd(expr ast.Expr) (ast.LoxValue, error) {
-	leftVal, err := i.Evaluate(expr.Children[0])
+func (i Interpreter) evalAnd(expr *ast.AndExpr) (ast.LoxValue, error) {
+	leftVal, err := i.Evaluate(expr.Left)
 	if err != nil {
 		return leftVal, err
 	}
@@ -178,24 +178,24 @@ func (i Interpreter) evalAnd(expr ast.Expr) (ast.LoxValue, error) {
 		return ast.NewBoolValue(false), nil
 	}
 
-	rightVal, err := i.Evaluate(expr.Children[1])
+	rightVal, err := i.Evaluate(expr.Right)
 	return ast.NewBoolValue(rightVal.IsTruthy()), err
 }
 
-func (i Interpreter) evalCall(expr ast.Expr) (ast.LoxValue, error) {
-	callee, err := i.Evaluate(expr.Children[0])
+func (i Interpreter) evalCall(expr *ast.CallExpr) (ast.LoxValue, error) {
+	callee, err := i.Evaluate(expr.Callee)
 	if err != nil {
 		return callee, err
 	}
 
 	if callee.Type != ast.LT_FUNCTION {
-		return callee, util.NewRuntimeError(expr.Token, "callee is not callable.")
+		return callee, util.NewRuntimeError(expr.Location, "callee is not callable.")
 	}
 	fun := callee.AsFunction()
 
 	var args []ast.LoxValue
-	for idx := 1; idx < len(expr.Children); idx += 1 {
-		arg, err := i.Evaluate(expr.Children[idx])
+	for _, arg := range expr.Arguments {
+		arg, err := i.Evaluate(arg)
 		if err != nil {
 			return arg, err
 		}
@@ -203,7 +203,7 @@ func (i Interpreter) evalCall(expr ast.Expr) (ast.LoxValue, error) {
 	}
 
 	if fun.Arity() != len(args) {
-		return callee, util.NewRuntimeError(expr.Token,
+		return callee, util.NewRuntimeError(expr.Location,
 			fmt.Sprintf("callee expects %d arguments, got %d", fun.Arity(), len(args)))
 	}
 

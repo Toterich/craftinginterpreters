@@ -10,6 +10,7 @@ import (
 type Parser struct {
 	tokens    []ast.Token
 	errs      []error
+	ast       ast.Ast
 	current   int
 	loopLevel int
 }
@@ -24,8 +25,6 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 	p.errs = nil
 	p.loopLevel = 0
 
-	var statements []ast.Stmt
-
 	for !p.isAtEnd() {
 		stmt, errs := p.parseDeclaration()
 		// Discard statements with a parse error
@@ -33,11 +32,11 @@ func (p *Parser) Parse(input []ast.Token) ([]ast.Stmt, []error) {
 			p.errs = append(p.errs, errs...)
 			p.skipToNextStatement()
 		} else {
-			statements = append(statements, stmt)
+			p.ast.Statements = append(p.ast.Statements, stmt)
 		}
 	}
 
-	return statements, p.errs
+	return p.ast.Statements, p.errs
 }
 
 // declaration    -> funDecl | varDecl | statement ;
@@ -83,11 +82,13 @@ func (p *Parser) parseFunDecl() (ast.Stmt, []error) {
 		if err != nil {
 			return err
 		}
-		if param.Type != ast.EXPR_IDENTIFIER {
+
+		if param, ok := param.(*ast.IdentifierExpr); ok {
+			params = append(params, param.Token)
+			return nil
+		} else {
 			return util.NewSyntaxError(p.previous(), "function parameter needs to be an identifier.")
 		}
-		params = append(params, param.Token)
-		return nil
 	}
 
 	if !p.match(ast.RIGHT_PAREN) {
@@ -311,10 +312,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	if p.check(ast.SEMICOLON) {
 		// If the condition is omitted, we do the same thing as C and replace it by a non-zero constant,
 		// in this case a true literal. This means the loop will run indefinitely.
-		condition, err =
-			ast.NewLiteralExpr(
-				ast.Token{Type: ast.TRUE, Literal: ast.NewBoolValue(true), Line: p.peek().Line}),
-			nil
+		condition, err = p.ast.Expressions.NewLiteralExpr(ast.Token{Type: ast.TRUE, Literal: ast.NewBoolValue(true), Line: p.peek().Line}), nil
 	} else {
 		condition, err = p.parseExpression()
 		if err != nil {
@@ -329,7 +327,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	// Parse the increment, which is either an expression or nothing
 	var increment ast.Expr
 	if p.check(ast.RIGHT_PAREN) {
-		increment, err = ast.Expr{}, nil
+		increment, err = nil, nil
 	} else {
 		increment, err = p.parseExpression()
 		if err != nil {
@@ -350,7 +348,7 @@ func (p *Parser) parseForStmt() (ast.Stmt, []error) {
 	// statements
 	while := ast.NewWhileStmt(condition, body)
 
-	if increment.Type != ast.EXPR_INVALID {
+	if increment != nil {
 		// If the loop body is already a block statement, append the increment to the end, otherwise create
 		// a block statement of the original body and the increment
 		if while.Children[0].Type == ast.ST_BLOCK {
@@ -407,7 +405,7 @@ func (p *Parser) parseCommaOp() (ast.Expr, error) {
 		if err != nil {
 			return expr, err
 		}
-		expr = ast.NewBinaryExpr(expr, operator, right)
+		expr = p.ast.Expressions.NewBinaryExpr(operator, expr, right)
 	}
 
 	return expr, nil
@@ -431,9 +429,8 @@ func (p *Parser) parseAssignment() (ast.Expr, error) {
 			return right, err
 		}
 
-		if expr.Type == ast.EXPR_IDENTIFIER {
-			left := expr.Token
-			return ast.NewAssignExpr(left, right), nil
+		if expr, ok := expr.(*ast.IdentifierExpr); ok {
+			return p.ast.Expressions.NewAssignExpr(expr.Token, right), nil
 		}
 
 		return expr, util.NewRuntimeError(equals, "lhs of assignment is not an identifier.")
@@ -455,7 +452,7 @@ func (p *Parser) parseLogicOr() (ast.Expr, error) {
 			return right, err
 		}
 
-		expr = ast.NewOrExpr(expr, right)
+		expr = p.ast.Expressions.NewOrExpr(expr, right)
 	}
 
 	return expr, nil
@@ -474,7 +471,7 @@ func (p *Parser) parseLogicAnd() (ast.Expr, error) {
 			return right, err
 		}
 
-		expr = ast.NewAndExpr(expr, right)
+		expr = p.ast.Expressions.NewAndExpr(expr, right)
 	}
 
 	return expr, nil
@@ -494,7 +491,8 @@ func (p *Parser) parseEquality() (ast.Expr, error) {
 		if err != nil {
 			return expr, err
 		}
-		expr = ast.NewBinaryExpr(expr, operator, right)
+
+		expr = p.ast.Expressions.NewBinaryExpr(operator, expr, right)
 	}
 
 	return expr, nil
@@ -504,7 +502,7 @@ func (p *Parser) parseEquality() (ast.Expr, error) {
 func (p *Parser) parseComparison() (ast.Expr, error) {
 	expr, err := p.parseTerm()
 	if err != nil {
-		return ast.Expr{}, err
+		return nil, err
 	}
 
 	for p.match(ast.GREATER, ast.GREATER_EQUAL, ast.LESS, ast.LESS_EQUAL) {
@@ -514,7 +512,8 @@ func (p *Parser) parseComparison() (ast.Expr, error) {
 		if err != nil {
 			return expr, err
 		}
-		expr = ast.NewBinaryExpr(expr, operator, right)
+
+		expr = p.ast.Expressions.NewBinaryExpr(operator, expr, right)
 	}
 
 	return expr, nil
@@ -524,7 +523,7 @@ func (p *Parser) parseComparison() (ast.Expr, error) {
 func (p *Parser) parseTerm() (ast.Expr, error) {
 	expr, err := p.parseFactor()
 	if err != nil {
-		return ast.Expr{}, err
+		return expr, err
 	}
 
 	for p.match(ast.MINUS, ast.PLUS) {
@@ -534,7 +533,8 @@ func (p *Parser) parseTerm() (ast.Expr, error) {
 		if err != nil {
 			return expr, err
 		}
-		expr = ast.NewBinaryExpr(expr, operator, right)
+
+		expr = p.ast.Expressions.NewBinaryExpr(operator, expr, right)
 	}
 
 	return expr, nil
@@ -544,7 +544,7 @@ func (p *Parser) parseTerm() (ast.Expr, error) {
 func (p *Parser) parseFactor() (ast.Expr, error) {
 	expr, err := p.parseUnary()
 	if err != nil {
-		return ast.Expr{}, err
+		return expr, err
 	}
 
 	for p.match(ast.SLASH, ast.STAR) {
@@ -555,7 +555,7 @@ func (p *Parser) parseFactor() (ast.Expr, error) {
 			return expr, err
 		}
 
-		expr = ast.NewBinaryExpr(expr, operator, right)
+		expr = p.ast.Expressions.NewBinaryExpr(operator, expr, right)
 	}
 
 	return expr, nil
@@ -569,7 +569,7 @@ func (p *Parser) parseUnary() (ast.Expr, error) {
 		if err != nil {
 			return child, err
 		}
-		return ast.NewUnaryExpr(child, operator), nil
+		return p.ast.Expressions.NewUnaryExpr(operator, child), nil
 	}
 
 	return p.parseCall()
@@ -588,7 +588,7 @@ func (p *Parser) parseCall() (ast.Expr, error) {
 
 		// empty argument list
 		if p.match(ast.RIGHT_PAREN) {
-			callee = ast.NewCallExpr(callee, p.previous(), args)
+			callee = p.ast.Expressions.NewCallExpr(p.previous(), callee, args)
 			continue
 		}
 
@@ -616,7 +616,7 @@ func (p *Parser) parseCall() (ast.Expr, error) {
 			return callee, err
 		}
 
-		callee = ast.NewCallExpr(callee, close, args)
+		callee = p.ast.Expressions.NewCallExpr(close, callee, args)
 	}
 
 	return callee, nil
@@ -625,23 +625,25 @@ func (p *Parser) parseCall() (ast.Expr, error) {
 // primary        → NUMBER | STRING | IDENTIFIER | "true" | "false" | "nil" | "(" expression ")" ;
 func (p *Parser) parsePrimary() (ast.Expr, error) {
 	if p.match(ast.NUMBER, ast.STRING, ast.TRUE, ast.FALSE, ast.NIL) {
-		return ast.NewLiteralExpr(p.previous()), nil
+		return p.ast.Expressions.NewLiteralExpr(p.previous()), nil
 	}
 
 	if p.match(ast.IDENTIFIER) {
-		return ast.NewIdentifierExpression(p.previous()), nil
+		return p.ast.Expressions.NewIdentifierExpr(p.previous()), nil
 	}
 
 	if p.match(ast.LEFT_PAREN) {
 		expr, err := p.parseExpression()
 		if err != nil {
-			return ast.Expr{}, err
+			return expr, err
 		}
+		expr = p.ast.Expressions.NewGroupingExpr(expr)
 		_, err = p.consume(ast.RIGHT_PAREN, "expected ')' after expression.")
-		return ast.NewGroupingExpr(expr), err
+
+		return expr, err
 	}
 
-	return ast.Expr{}, util.NewSyntaxError(p.peek(), "expected expression.")
+	return nil, util.NewSyntaxError(p.peek(), "expected expression.")
 }
 
 // Checks if the current Token is one of the given types and if so, consumes it and returns true

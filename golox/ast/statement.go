@@ -36,10 +36,7 @@ func NewPrintStmt(expr Expr) Stmt {
 
 // In a Var Decl, the token is the identifier of the new variable
 func NewVarDeclStmt(token Token) Stmt {
-	// TODO: This is a bit weird because Expressions always store a Token indicating the position where
-	// the Expression occurs in the source, but for empty variable declarations we need to assign
-	// an implicit nil Expression. Maybe Expressions need to be decoupled form source locations in general?
-	return Stmt{Type: ST_VARDECL, Tokens: []Token{token}, Expr: NewLiteralExpr(Token{Type: NIL, Line: -1})}
+	return Stmt{Type: ST_VARDECL, Tokens: []Token{token}, Expr: nil}
 }
 
 func NewBlockStmt(children []Stmt) Stmt {
